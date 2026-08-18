@@ -114,10 +114,284 @@ let currentFrames = [];
 
 let robotBuilt = false;
 
-
-// Kamera yalnızca ilk robot çizildiğinde
-// otomatik olarak ayarlanacak.
 let firstFrameDone = false;
+
+
+// ============================================================
+// SMALL UTILITIES
+// ============================================================
+
+function sleep(
+    milliseconds
+) {
+
+    return new Promise(
+        resolve =>
+            setTimeout(
+                resolve,
+                milliseconds
+            )
+    );
+}
+
+
+// ============================================================
+// SAFE API RESPONSE
+//
+// Render bazen cold start / deploy sırasında JSON yerine:
+//
+// Not Found
+// Bad Gateway
+// Service Unavailable
+//
+// gibi plain-text cevaplar döndürebilir.
+//
+// response.json() kullanırsak:
+// Unexpected token 'N'
+//
+// hatası oluşur.
+//
+// Bu helper önce text okur, sonra güvenli şekilde JSON parse eder.
+// ============================================================
+
+async function readApiResponse(
+    response
+) {
+
+    const text =
+        await response.text();
+
+
+    let data = null;
+
+
+    if (
+        text.trim() !== ""
+    ) {
+
+        try {
+
+            data =
+                JSON.parse(
+                    text
+                );
+
+        }
+
+        catch {
+
+            throw new Error(
+
+                `Backend geçersiz cevap verdi ` +
+                `(HTTP ${response.status}): ${text}`
+
+            );
+        }
+    }
+
+
+    if (
+        !response.ok
+    ) {
+
+        throw new Error(
+
+            data?.detail
+            ??
+            data?.message
+            ??
+            `Backend HTTP ${response.status} hatası verdi.`
+
+        );
+    }
+
+
+    return data;
+}
+
+
+// ============================================================
+// SAFE API REQUEST
+//
+// Geçici Render hatalarında birkaç kez tekrar dener.
+// ============================================================
+
+async function apiRequest(
+    url,
+    options = {},
+    retries = 2
+) {
+
+    let lastError = null;
+
+
+    for (
+        let attempt = 0;
+        attempt <= retries;
+        attempt++
+    ) {
+
+        try {
+
+            const response =
+                await fetch(
+                    url,
+                    {
+                        cache: "no-store",
+                        ...options
+                    }
+                );
+
+
+            // Render deploy / wake-up sırasında
+            // geçici olarak bu kodları görebiliriz.
+
+            const retryableStatus =
+                response.status === 404
+                ||
+                response.status === 408
+                ||
+                response.status === 429
+                ||
+                response.status === 500
+                ||
+                response.status === 502
+                ||
+                response.status === 503
+                ||
+                response.status === 504;
+
+
+            if (
+                retryableStatus
+                &&
+                attempt < retries
+            ) {
+
+                await sleep(
+                    800
+                    * (attempt + 1)
+                );
+
+                continue;
+            }
+
+
+            return await readApiResponse(
+                response
+            );
+
+        }
+
+        catch (error) {
+
+            lastError =
+                error;
+
+
+            if (
+                attempt >= retries
+            ) {
+
+                throw error;
+            }
+
+
+            await sleep(
+                800
+                * (attempt + 1)
+            );
+        }
+    }
+
+
+    throw (
+        lastError
+        ??
+        new Error(
+            "Backend isteği başarısız."
+        )
+    );
+}
+
+
+// ============================================================
+// WAIT FOR BACKEND
+//
+// Render Free instance uyuyorsa backend'in ayağa kalkmasını
+// bekler.
+//
+// Böylece:
+//
+// checkBackend();
+// loadPresetLibrary();
+// createDemoRobot();
+//
+// üçlüsünü aynı anda ateşlemiyoruz.
+// ============================================================
+
+async function waitForBackend(
+    maxAttempts = 45
+) {
+
+    disableLinearJog();
+
+
+    for (
+        let attempt = 1;
+        attempt <= maxAttempts;
+        attempt++
+    ) {
+
+        try {
+
+            statusText.textContent =
+                attempt === 1
+                    ? "Backend bağlantısı bekleniyor..."
+                    : `Backend uyanıyor... ${attempt}/${maxAttempts}`;
+
+
+            const data =
+                await apiRequest(
+                    "/api/health",
+                    {},
+                    0
+                );
+
+
+            if (
+                data?.status === "ok"
+            ) {
+
+                statusText.textContent =
+                    "Backend bağlı";
+
+                return true;
+            }
+
+        }
+
+        catch (error) {
+
+            console.log(
+                `Backend henüz hazır değil (${attempt}/${maxAttempts})`,
+                error.message
+            );
+        }
+
+
+        await sleep(
+            1500
+        );
+    }
+
+
+    statusText.textContent =
+        "Backend bağlantısı kurulamadı";
+
+
+    return false;
+}
 
 
 // ============================================================
@@ -172,10 +446,12 @@ const renderer =
 
 
 renderer.setPixelRatio(
+
     Math.min(
         window.devicePixelRatio,
         2
     )
+
 );
 
 
@@ -211,10 +487,12 @@ controls.target.set(
 // ============================================================
 
 scene.add(
+
     new THREE.AmbientLight(
         0xffffff,
         1.5
     )
+
 );
 
 
@@ -294,6 +572,7 @@ function resizeRenderer() {
     const width =
         container.clientWidth;
 
+
     const height =
         container.clientHeight;
 
@@ -372,6 +651,7 @@ function addDHRow(
     tr.dataset.min =
         data.min ?? "";
 
+
     tr.dataset.max =
         data.max ?? "";
 
@@ -402,7 +682,8 @@ function addDHRow(
 
 
         input.value =
-            data[field] ?? "0";
+            data[field]
+            ?? "0";
 
 
         input.dataset.field =
@@ -461,6 +742,7 @@ function addDHRow(
         option.value =
             type;
 
+
         option.textContent =
             type;
 
@@ -472,7 +754,8 @@ function addDHRow(
 
 
     select.value =
-        data.type ?? "FIXED";
+        data.type
+        ?? "FIXED";
 
 
     select.addEventListener(
@@ -508,7 +791,9 @@ function readDHTable() {
 
     for (
         const tr
-        of dhBody.querySelectorAll("tr")
+        of dhBody.querySelectorAll(
+            "tr"
+        )
     ) {
 
         const inputs =
@@ -526,19 +811,24 @@ function readDHTable() {
         const row = {
 
             theta:
-                inputs[0]?.value || "0",
+                inputs[0]?.value
+                || "0",
 
             d:
-                inputs[1]?.value || "0",
+                inputs[1]?.value
+                || "0",
 
             a:
-                inputs[2]?.value || "0",
+                inputs[2]?.value
+                || "0",
 
             alpha:
-                inputs[3]?.value || "0",
+                inputs[3]?.value
+                || "0",
 
             type:
-                select?.value || "FIXED"
+                select?.value
+                || "FIXED"
 
         };
 
@@ -605,6 +895,7 @@ function readCurrentValues() {
                     )
                         ? value
                         : 0;
+
             }
         );
 
@@ -638,7 +929,7 @@ function onDHChanged() {
     parameterRefreshTimer =
         setTimeout(
             refreshParameters,
-            200
+            250
         );
 }
 
@@ -660,19 +951,22 @@ async function refreshParameters() {
         parameterList.textContent =
             "DH tablosu boş.";
 
+
         homeList.textContent =
             "DH tablosu boş.";
 
-        return;
+
+        return false;
     }
 
 
     try {
 
-        const response =
-            await fetch(
+        const data =
+            await apiRequest(
                 "/api/default-values",
                 {
+
                     method:
                         "POST",
 
@@ -692,23 +986,9 @@ async function refreshParameters() {
                             values: {}
 
                         })
+
                 }
             );
-
-
-        const data =
-            await response.json();
-
-
-        if (
-            !response.ok
-        ) {
-
-            throw new Error(
-                data.detail
-                ?? "DH hatası"
-            );
-        }
 
 
         createParameterInputs(
@@ -718,6 +998,10 @@ async function refreshParameters() {
 
         statusText.textContent =
             "DH hazır.";
+
+
+        return true;
+
     }
 
     catch (error) {
@@ -729,6 +1013,17 @@ async function refreshParameters() {
 
         statusText.textContent =
             "DH hatası";
+
+
+        parameterList.textContent =
+            "Parametreler alınamadı.";
+
+
+        homeList.textContent =
+            "Home değerleri alınamadı.";
+
+
+        return false;
     }
 }
 
@@ -748,6 +1043,7 @@ function createParameterInputs(
     parameterList.innerHTML =
         "";
 
+
     homeList.innerHTML =
         "";
 
@@ -755,6 +1051,7 @@ function createParameterInputs(
     const names =
         Object.keys(
             values
+            ?? {}
         ).sort(
             naturalSymbolSort
         );
@@ -784,6 +1081,7 @@ function createParameterInputs(
                 value,
                 ""
             );
+
         }
 
         else {
@@ -799,19 +1097,13 @@ function createParameterInputs(
     }
 
 
-    /*
-        ÖNEMLİ:
+    if (
+        names.length === 0
+    ) {
 
-        Burada artık scheduleBuild() YOK.
-
-        Eskiden refreshParameters()
-        çağrıldığında robot otomatik build
-        ediliyordu.
-
-        Preset yüklerken ayrıca buildRobot()
-        çağrıldığı için bazı durumlarda
-        robot iki kere hesaplanıyordu.
-    */
+        parameterList.textContent =
+            "Geometrik parametre yok.";
+    }
 }
 
 
@@ -860,8 +1152,10 @@ function createValueRow(
     input.type =
         "number";
 
+
     input.value =
-        value;
+        value ?? 0;
+
 
     input.dataset.symbol =
         symbol;
@@ -897,7 +1191,7 @@ function createValueRow(
 
 
 // ============================================================
-// NATURAL q/L SORT
+// NATURAL SYMBOL SORT
 // ============================================================
 
 function naturalSymbolSort(
@@ -933,7 +1227,7 @@ function scheduleBuild() {
     buildTimer =
         setTimeout(
             buildRobot,
-            150
+            250
         );
 }
 
@@ -952,7 +1246,7 @@ async function buildRobot() {
         dhTable.length === 0
     ) {
 
-        return;
+        return false;
     }
 
 
@@ -966,10 +1260,11 @@ async function buildRobot() {
             "Robot hesaplanıyor...";
 
 
-        const response =
-            await fetch(
+        const data =
+            await apiRequest(
                 "/api/build",
                 {
+
                     method:
                         "POST",
 
@@ -990,23 +1285,9 @@ async function buildRobot() {
                                 values
 
                         })
+
                 }
             );
-
-
-        const data =
-            await response.json();
-
-
-        if (
-            !response.ok
-        ) {
-
-            throw new Error(
-                data.detail
-                ?? "Build hatası"
-            );
-        }
 
 
         currentDHTable =
@@ -1018,28 +1299,13 @@ async function buildRobot() {
         };
 
 
-        // ====================================================
-        // DRAW ROBOT
-        // ====================================================
-
         drawRobot(
             data.frames
         );
 
 
         // ====================================================
-        // AUTO REFRAME
-        //
-        // SADECE İLK ROBOT ÇİZİMİNDE.
-        //
-        // Bundan sonraki:
-        //
-        // Joint Jog
-        // Linear Jog
-        // Parameter değişimi
-        // Home değişimi
-        //
-        // kamerayı değiştirmez.
+        // AUTO REFRAME ONLY ON FIRST BUILD
         // ====================================================
 
         if (
@@ -1073,6 +1339,10 @@ async function buildRobot() {
 
         statusText.textContent =
             `Robot hazır — ${data.frame_count} frame`;
+
+
+        return true;
+
     }
 
     catch (error) {
@@ -1091,6 +1361,9 @@ async function buildRobot() {
 
         statusText.textContent =
             "Build hatası";
+
+
+        return false;
     }
 }
 
@@ -1191,6 +1464,7 @@ function disposeObject(
                         material =>
                             material.dispose()
                     );
+
                 }
 
                 else {
@@ -1369,9 +1643,11 @@ function createFrameAxes(
 
 
     group.add(
+
         new THREE.AxesHelper(
             45
         )
+
     );
 
 
@@ -1387,8 +1663,15 @@ function drawRobot(
     frames
 ) {
 
-    // Son robot frame'lerini sakla.
-    // Reframe butonu bunları kullanacak.
+    if (
+        !Array.isArray(
+            frames
+        )
+    ) {
+
+        return;
+    }
+
 
     currentFrames =
         frames;
@@ -1465,21 +1748,16 @@ function drawRobot(
 
 
         robotGroup.add(
+
             createFrameAxes(
                 frame
             )
+
         );
     }
 
 
-    /*
-        DİKKAT:
-
-        Burada reframeViewer() ÇAĞRILMIYOR.
-
-        Bu nedenle her jog işleminde
-        kamera artık sıfırlanmayacak.
-    */
+    // Kamera burada değiştirilmez.
 }
 
 
@@ -1501,23 +1779,16 @@ function reframeViewer(
     }
 
 
-    // ========================================================
-    // ROBOT POINTS
-    // ========================================================
-
     const points =
         frames.map(
-            frame =>
 
+            frame =>
                 new THREE.Vector3(
                     ...frame.position
                 )
+
         );
 
-
-    // ========================================================
-    // BOUNDING BOX
-    // ========================================================
 
     const box =
         new THREE.Box3()
@@ -1540,13 +1811,9 @@ function reframeViewer(
 
     let maxSize =
         Math.max(
-
             size.x,
-
             size.y,
-
             size.z
-
         );
 
 
@@ -1559,20 +1826,9 @@ function reframeViewer(
     }
 
 
-    // ========================================================
-    // CAMERA DISTANCE
-    // ========================================================
-
     const distance =
         maxSize * 2.2;
 
-
-    // ========================================================
-    // CAMERA POSITION
-    //
-    // Z yukarı.
-    // Hafif izometrik görünüm.
-    // ========================================================
 
     camera.position.set(
 
@@ -1591,10 +1847,6 @@ function reframeViewer(
         1
     );
 
-
-    // ========================================================
-    // ORBIT TARGET
-    // ========================================================
 
     controls.target.copy(
         center
@@ -1616,6 +1868,7 @@ function enableLinearJog() {
 
             button.disabled =
                 false;
+
         }
     );
 }
@@ -1628,13 +1881,14 @@ function disableLinearJog() {
 
             button.disabled =
                 true;
+
         }
     );
 }
 
 
 // ============================================================
-// FIND JOINT INFO FROM DH
+// FIND JOINT INFO
 // ============================================================
 
 function extractJointInfo() {
@@ -1738,6 +1992,7 @@ function extractJointInfo() {
 
 
     joints.sort(
+
         (a, b) =>
 
             Number(
@@ -1749,6 +2004,7 @@ function extractJointInfo() {
             Number(
                 b.name.slice(1)
             )
+
     );
 
 
@@ -1762,7 +2018,9 @@ function extractJointInfo() {
 
 function buildJointJogPanel() {
 
-    jointJogList.innerHTML = "";
+    jointJogList.innerHTML =
+        "";
+
 
     currentJointInfo =
         extractJointInfo();
@@ -1774,6 +2032,7 @@ function buildJointJogPanel() {
 
         jointJogList.textContent =
             "Hareketli joint bulunamadı.";
+
 
         return;
     }
@@ -1796,9 +2055,13 @@ function buildJointJogPanel() {
 
         const currentValue =
             Number(
+
                 currentRobotValues[
                     joint.name
-                ] ?? 0
+                ]
+                ??
+                0
+
             );
 
 
@@ -1814,14 +2077,12 @@ function buildJointJogPanel() {
                 ${joint.name}
             </span>
 
-
             <button
                 class="joint-minus"
                 data-joint="${joint.name}"
             >
                 &lt;
             </button>
-
 
             <span
                 id="joint-current-${joint.name}"
@@ -1830,7 +2091,6 @@ function buildJointJogPanel() {
             >
                 ${currentValue.toFixed(2)} ${unit}
             </span>
-
 
             <button
                 class="joint-plus"
@@ -1851,8 +2111,15 @@ function buildJointJogPanel() {
     bindJointJogButtons();
 }
 
+
 // ============================================================
 // UPDATE JOINT DISPLAY
+//
+// Burada önceki kodda .value kullanılıyordu.
+//
+// Ancak joint-current artık INPUT değil SPAN.
+//
+// Bu nedenle textContent kullanıyoruz.
 // ============================================================
 
 function updateJointJogValues(
@@ -1866,20 +2133,25 @@ function updateJointJogValues(
         )
     ) {
 
-        const input =
+        const display =
             document.getElementById(
                 `joint-current-${name}`
             );
 
 
         if (
-            input
+            display
         ) {
 
-            input.value =
-                Number(
-                    value
-                ).toFixed(2);
+            const unit =
+                display.dataset.unit
+                ??
+                "";
+
+
+            display.textContent =
+                `${Number(value).toFixed(2)} ${unit}`;
+
         }
     }
 }
@@ -1904,9 +2176,11 @@ async function performLinearJog(
 
     const step =
         Math.abs(
+
             Number(
                 linearStepInput.value
             )
+
         );
 
 
@@ -1922,6 +2196,7 @@ async function performLinearJog(
             "Geçerli bir Linear Jog step değeri gir."
         );
 
+
         return;
     }
 
@@ -1932,10 +2207,11 @@ async function performLinearJog(
             `${axis} Jog...`;
 
 
-        const response =
-            await fetch(
+        const data =
+            await apiRequest(
                 "/api/jog/linear",
                 {
+
                     method:
                         "POST",
 
@@ -1965,23 +2241,9 @@ async function performLinearJog(
                                 step
 
                         })
+
                 }
             );
-
-
-        const data =
-            await response.json();
-
-
-        if (
-            !response.ok
-        ) {
-
-            throw new Error(
-                data.detail
-                ?? "Linear Jog hatası"
-            );
-        }
 
 
         if (
@@ -1992,6 +2254,7 @@ async function performLinearJog(
                 `Jog başarısız — hata ${Number(
                     data.position_error
                 ).toFixed(2)} mm`;
+
 
             return;
         }
@@ -2006,12 +2269,10 @@ async function performLinearJog(
 
             currentRobotValues[
                 name
-            ] = value;
+            ] =
+                value;
         }
 
-
-        // Robot yeniden çizilir.
-        // Kamera değiştirilmez.
 
         drawRobot(
             data.frames
@@ -2029,9 +2290,13 @@ async function performLinearJog(
 
 
         statusText.textContent =
-            `${axis} ${data.distance >= 0 ? "+" : ""}${Number(
-                data.distance
-            ).toFixed(2)} mm`;
+
+            `${axis} ` +
+
+            `${data.distance >= 0 ? "+" : ""}` +
+
+            `${Number(data.distance).toFixed(2)} mm`;
+
     }
 
     catch (error) {
@@ -2071,17 +2336,21 @@ async function performJointJog(
 
     const revoluteStep =
         Math.abs(
+
             Number(
                 revoluteStepInput.value
             )
+
         );
 
 
     const prismaticStep =
         Math.abs(
+
             Number(
                 prismaticStepInput.value
             )
+
         );
 
 
@@ -2099,6 +2368,7 @@ async function performJointJog(
             "Geçerli Joint Jog step değerleri gir."
         );
 
+
         return;
     }
 
@@ -2109,10 +2379,11 @@ async function performJointJog(
             `${jointName} Jog...`;
 
 
-        const response =
-            await fetch(
+        const data =
+            await apiRequest(
                 "/api/jog/joint",
                 {
+
                     method:
                         "POST",
 
@@ -2145,23 +2416,9 @@ async function performJointJog(
                                 prismaticStep
 
                         })
+
                 }
             );
-
-
-        const data =
-            await response.json();
-
-
-        if (
-            !response.ok
-        ) {
-
-            throw new Error(
-                data.detail
-                ?? "Joint Jog hatası"
-            );
-        }
 
 
         for (
@@ -2173,12 +2430,10 @@ async function performJointJog(
 
             currentRobotValues[
                 name
-            ] = value;
+            ] =
+                value;
         }
 
-
-        // Robot yeniden çizilir.
-        // Kamera kesinlikle değiştirilmez.
 
         drawRobot(
             data.frames
@@ -2197,6 +2452,7 @@ async function performJointJog(
 
         statusText.textContent =
             `${jointName} jog`;
+
     }
 
     catch (error) {
@@ -2228,6 +2484,7 @@ function bindJointJogButtons() {
             ".joint-minus"
         )
         .forEach(
+
             button => {
 
                 button.addEventListener(
@@ -2244,6 +2501,7 @@ function bindJointJogButtons() {
                     }
                 );
             }
+
         );
 
 
@@ -2252,6 +2510,7 @@ function bindJointJogButtons() {
             ".joint-plus"
         )
         .forEach(
+
             button => {
 
                 button.addEventListener(
@@ -2268,6 +2527,7 @@ function bindJointJogButtons() {
                     }
                 );
             }
+
         );
 }
 
@@ -2277,6 +2537,7 @@ function bindJointJogButtons() {
 // ============================================================
 
 linearJogButtons.forEach(
+
     button => {
 
         button.addEventListener(
@@ -2295,6 +2556,7 @@ linearJogButtons.forEach(
             }
         );
     }
+
 );
 
 
@@ -2306,25 +2568,16 @@ async function loadPresetLibrary() {
 
     try {
 
-        const response =
-            await fetch(
-                "/api/presets"
-            );
+        robotLibrary.textContent =
+            "Presetler yükleniyor...";
 
 
         const data =
-            await response.json();
-
-
-        if (
-            !response.ok
-        ) {
-
-            throw new Error(
-                data.detail
-                ?? "Preset listesi alınamadı."
+            await apiRequest(
+                "/api/presets",
+                {},
+                3
             );
-        }
 
 
         robotLibrary.innerHTML =
@@ -2332,7 +2585,7 @@ async function loadPresetLibrary() {
 
 
         if (
-            !data.presets
+            !data?.presets
             ||
             data.presets.length === 0
         ) {
@@ -2340,7 +2593,8 @@ async function loadPresetLibrary() {
             robotLibrary.textContent =
                 "Preset bulunamadı.";
 
-            return;
+
+            return false;
         }
 
 
@@ -2374,6 +2628,7 @@ async function loadPresetLibrary() {
                     loadPreset(
                         preset.id
                     );
+
                 }
             );
 
@@ -2382,6 +2637,10 @@ async function loadPresetLibrary() {
                 button
             );
         }
+
+
+        return true;
+
     }
 
     catch (error) {
@@ -2393,6 +2652,9 @@ async function loadPresetLibrary() {
 
         robotLibrary.textContent =
             "Presetler yüklenemedi.";
+
+
+        return false;
     }
 }
 
@@ -2411,23 +2673,20 @@ async function loadPreset(
             "Preset yükleniyor...";
 
 
-        const response =
-            await fetch(
-                `/api/presets/${presetId}`
+        const preset =
+            await apiRequest(
+                `/api/presets/${encodeURIComponent(presetId)}`,
+                {},
+                2
             );
 
 
-        const preset =
-            await response.json();
-
-
         if (
-            !response.ok
+            !preset?.dh_table
         ) {
 
             throw new Error(
-                preset.detail
-                ?? "Preset yüklenemedi."
+                "Preset DH tablosu bulunamadı."
             );
         }
 
@@ -2455,7 +2714,18 @@ async function loadPreset(
         // PARAMETER / HOME INPUTS
         // ====================================================
 
-        await refreshParameters();
+        const refreshed =
+            await refreshParameters();
+
+
+        if (
+            !refreshed
+        ) {
+
+            throw new Error(
+                "Preset parametreleri oluşturulamadı."
+            );
+        }
 
 
         // ====================================================
@@ -2526,11 +2796,18 @@ async function loadPreset(
         // BUILD ONCE
         // ====================================================
 
-        await buildRobot();
+        const built =
+            await buildRobot();
 
 
-        statusText.textContent =
-            `${preset.name} yüklendi`;
+        if (
+            built
+        ) {
+
+            statusText.textContent =
+                `${preset.name} yüklendi`;
+        }
+
     }
 
     catch (error) {
@@ -2557,11 +2834,13 @@ async function loadPreset(
 
 addRowButton.addEventListener(
     "click",
-    () => {
+    async () => {
 
         addDHRow();
 
-        refreshParameters();
+
+        await refreshParameters();
+
     }
 );
 
@@ -2572,7 +2851,7 @@ addRowButton.addEventListener(
 
 removeRowButton.addEventListener(
     "click",
-    () => {
+    async () => {
 
         const rows =
             dhBody.querySelectorAll(
@@ -2589,8 +2868,9 @@ removeRowButton.addEventListener(
             ].remove();
 
 
-            refreshParameters();
+            await refreshParameters();
         }
+
     }
 );
 
@@ -2622,45 +2902,10 @@ reframeButton.addEventListener(
 
 
 // ============================================================
-// BACKEND HEALTH
-// ============================================================
-
-async function checkBackend() {
-
-    try {
-
-        const response =
-            await fetch(
-                "/api/health"
-            );
-
-
-        const data =
-            await response.json();
-
-
-        if (
-            data.status === "ok"
-        ) {
-
-            statusText.textContent =
-                "Backend bağlı";
-        }
-    }
-
-    catch {
-
-        statusText.textContent =
-            "Backend bağlantısı yok";
-    }
-}
-
-
-// ============================================================
 // DEMO ROBOT
 // ============================================================
 
-function createDemoRobot() {
+async function createDemoRobot() {
 
     if (
         dhBody.children.length > 0
@@ -2748,7 +2993,59 @@ function createDemoRobot() {
     });
 
 
-    refreshParameters();
+    await refreshParameters();
+}
+
+
+// ============================================================
+// START APPLICATION
+// ============================================================
+
+async function startApplication() {
+
+    disableLinearJog();
+
+
+    robotLibrary.textContent =
+        "Backend bekleniyor...";
+
+
+    // ========================================================
+    // 1) BACKEND READY
+    // ========================================================
+
+    const backendReady =
+        await waitForBackend();
+
+
+    if (
+        !backendReady
+    ) {
+
+        robotLibrary.textContent =
+            "Backend bağlantısı kurulamadı.";
+
+
+        return;
+    }
+
+
+    // ========================================================
+    // 2) LOAD PRESETS
+    // ========================================================
+
+    await loadPresetLibrary();
+
+
+    // ========================================================
+    // 3) CREATE DEFAULT DEMO
+    // ========================================================
+
+    await createDemoRobot();
+
+
+    statusText.textContent =
+        "Backend bağlı";
 }
 
 
@@ -2756,13 +3053,4 @@ function createDemoRobot() {
 // START
 // ============================================================
 
-disableLinearJog();
-
-
-checkBackend();
-
-
-loadPresetLibrary();
-
-
-createDemoRobot();
+startApplication();

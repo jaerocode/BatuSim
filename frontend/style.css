@@ -1,0 +1,788 @@
+/* =========================================================
+   GLOBAL
+   ========================================================= */
+
+* {
+    box-sizing: border-box;
+}
+
+
+html,
+body {
+    margin: 0;
+
+    width: 100%;
+    height: 100%;
+
+    font-family: Arial, Helvetica, sans-serif;
+
+    background: #181818;
+    color: #eeeeee;
+
+    overflow: hidden;
+}
+
+
+button,
+input,
+select {
+    font: inherit;
+}
+
+
+button {
+    cursor: pointer;
+}
+
+
+/* =========================================================
+   MAIN APP LAYOUT
+   ========================================================= */
+
+#app {
+    display: grid;
+
+    grid-template-columns:
+        300px
+        minmax(500px, 1fr)
+        430px;
+
+    width: 100vw;
+    height: 100vh;
+
+    overflow: hidden;
+}
+
+
+/* =========================================================
+   LEFT / RIGHT PANELS
+   ========================================================= */
+
+#left-panel,
+#right-panel {
+    background: #222222;
+
+    height: 100vh;
+
+    min-height: 0;
+}
+
+
+#left-panel {
+    padding: 10px;
+
+    border-right: 1px solid #444;
+
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+
+#right-panel {
+    display: flex;
+    flex-direction: column;
+
+    padding: 10px;
+
+    border-left: 1px solid #444;
+
+    overflow: hidden;
+}
+
+
+/* =========================================================
+   RIGHT PANEL SCROLL AREA
+   ========================================================= */
+
+#right-content {
+    flex: 1;
+
+    min-height: 0;
+
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    padding-right: 5px;
+}
+
+
+/* =========================================================
+   BUILD ROBOT FIXED FOOTER
+   ========================================================= */
+
+#build-footer {
+    flex-shrink: 0;
+
+    padding-top: 10px;
+
+    margin-top: 4px;
+
+    background: #222222;
+
+    border-top: 1px solid #444;
+}
+
+
+/* =========================================================
+   PANEL SECTIONS
+   ========================================================= */
+
+.panel-section {
+    margin-bottom: 18px;
+}
+
+
+.panel-section h2 {
+    margin:
+        0
+        0
+        10px
+        0;
+
+    font-size: 16px;
+    font-weight: 600;
+
+    color: #eeeeee;
+}
+
+
+.panel-section h3 {
+    margin:
+        12px
+        0
+        8px
+        0;
+
+    font-size: 14px;
+    font-weight: 600;
+
+    color: #cccccc;
+}
+
+
+.grow {
+    min-height: 0;
+}
+
+
+/* =========================================================
+   VIEWER
+   ========================================================= */
+
+#viewer-panel {
+    display: flex;
+    flex-direction: column;
+
+    min-width: 0;
+    min-height: 0;
+
+    background: #111111;
+
+    overflow: hidden;
+}
+
+
+/* =========================================================
+   VIEWER HEADER
+   ========================================================= */
+
+#viewer-header {
+    height: 44px;
+
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 12px;
+
+    padding:
+        0
+        14px;
+
+    background: #222222;
+
+    border-bottom: 1px solid #444444;
+}
+
+
+#viewer-title {
+    font-size: 14px;
+    font-weight: 600;
+
+    white-space: nowrap;
+}
+
+
+#viewer-controls {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: flex-end;
+
+    gap: 12px;
+
+    min-width: 0;
+}
+
+
+#reframe-button {
+    flex-shrink: 0;
+
+    padding:
+        5px
+        12px;
+
+    font-size: 13px;
+}
+
+
+#status {
+    font-size: 13px;
+
+    color: #aaaaaa;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   THREE.JS VIEWER
+   ========================================================= */
+
+#three-container {
+    flex: 1;
+
+    min-width: 0;
+    min-height: 0;
+
+    position: relative;
+
+    overflow: hidden;
+}
+
+
+#three-container canvas {
+    display: block;
+
+    width: 100%;
+    height: 100%;
+}
+
+
+/* =========================================================
+   DH TABLE
+   ========================================================= */
+
+#dh-table {
+    width: 100%;
+
+    border-collapse: collapse;
+
+    table-layout: fixed;
+}
+
+
+#dh-table th {
+    padding:
+        4px
+        2px;
+
+    font-size: 12px;
+    font-weight: normal;
+
+    color: #aaaaaa;
+
+    text-align: center;
+}
+
+
+#dh-table td {
+    padding: 3px;
+}
+
+
+#dh-table input,
+#dh-table select {
+    width: 100%;
+    min-width: 0;
+
+    background: #151515;
+    color: #eeeeee;
+
+    border: 1px solid #555555;
+
+    border-radius: 3px;
+
+    padding: 5px;
+}
+
+
+#dh-table input:focus,
+#dh-table select:focus {
+    outline: none;
+
+    border-color: #888888;
+}
+
+
+/* =========================================================
+   DH ROW BUTTONS
+   ========================================================= */
+
+.row-buttons {
+    display: flex;
+
+    gap: 8px;
+
+    margin-top: 10px;
+}
+
+
+.row-buttons button {
+    flex: 1;
+}
+
+
+/* =========================================================
+   PARAMETER / HOME INPUTS
+   ========================================================= */
+
+.parameter-row,
+.home-row {
+    display: grid;
+
+    grid-template-columns:
+        70px
+        minmax(0, 1fr)
+        45px;
+
+    align-items: center;
+
+    gap: 6px;
+
+    margin-bottom: 6px;
+}
+
+
+.parameter-row input,
+.home-row input,
+.step-row input {
+    min-width: 0;
+
+    background: #151515;
+
+    color: #eeeeee;
+
+    border: 1px solid #555555;
+
+    border-radius: 3px;
+
+    padding: 6px;
+}
+
+
+.parameter-row input:focus,
+.home-row input:focus,
+.step-row input:focus {
+    outline: none;
+
+    border-color: #888888;
+}
+
+
+/* =========================================================
+   STEP ROW
+   ========================================================= */
+
+.step-row {
+    display: flex;
+
+    gap: 6px;
+
+    align-items: center;
+
+    margin-bottom: 6px;
+}
+
+
+.step-row label {
+    min-width: 52px;
+
+    font-size: 13px;
+
+    color: #cccccc;
+}
+
+
+.step-row input {
+    width: 80px;
+}
+
+
+.step-row span {
+    font-size: 12px;
+
+    color: #aaaaaa;
+}
+
+
+/* =========================================================
+   LINEAR JOG
+   ========================================================= */
+
+.jog-grid {
+    display: grid;
+
+    grid-template-columns:
+        1fr
+        1fr;
+
+    gap: 6px;
+
+    margin-top: 10px;
+}
+
+
+.jog-grid button {
+    padding: 8px;
+}
+
+
+.linear-jog-button {
+    min-height: 36px;
+}
+
+
+/* =========================================================
+   TCP DISPLAY
+   ========================================================= */
+
+#tcp-display {
+    margin-top: 12px;
+
+    padding: 10px;
+
+    background: #191919;
+
+    border: 1px solid #444444;
+
+    border-radius: 4px;
+
+    font-size: 13px;
+}
+
+
+#tcp-display h3 {
+    margin:
+        0
+        0
+        8px
+        0;
+}
+
+
+#tcp-display > div {
+    margin-top: 4px;
+
+    font-family: monospace;
+
+    color: #cccccc;
+}
+
+
+#tcp-x,
+#tcp-y,
+#tcp-z {
+    color: #ffffff;
+}
+
+
+/* =========================================================
+   JOINT JOG
+   ========================================================= */
+
+.joint-step-box {
+    margin-bottom: 10px;
+
+    padding-bottom: 8px;
+
+    border-bottom: 1px solid #3c3c3c;
+}
+
+
+#joint-jog-list {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 6px;
+
+    min-width: 0;
+}
+
+
+#joint-jog-placeholder {
+    padding:
+        10px
+        4px;
+
+    font-size: 13px;
+
+    line-height: 1.4;
+
+    color: #888888;
+}
+
+
+/*
+   app.js joint satırlarını bu class ile oluşturuyorsa
+   doğrudan ABB benzeri görünüm alır.
+*/
+
+/* =========================================================
+   JOINT JOG - FINAL LAYOUT
+   ========================================================= */
+
+.joint-jog-row {
+    display: grid;
+
+    grid-template-columns:
+        32px
+        40px
+        minmax(80px, 1fr)
+        40px;
+
+    align-items: center;
+
+    gap: 7px;
+
+    width: 100%;
+
+    margin-bottom: 8px;
+}
+
+
+/* q1 / q2 / q3 */
+
+.joint-jog-row .joint-name {
+    width: 32px;
+
+    font-size: 13px;
+    font-weight: 600;
+
+    text-align: left;
+
+    color: #eeeeee;
+}
+
+
+/* ORTADAKİ JOINT DEĞERİ */
+
+.joint-jog-row .joint-value {
+    width: 100%;
+    height: 34px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 0 8px;
+
+    background: #151515;
+
+    border: 1px solid #555;
+    border-radius: 4px;
+
+    font-family: monospace;
+    font-size: 13px;
+
+    color: #eeeeee;
+
+    white-space: nowrap;
+}
+
+
+/* SOL / SAĞ OKLAR */
+
+.joint-jog-row .joint-minus,
+.joint-jog-row .joint-plus {
+    width: 40px;
+    height: 34px;
+
+    min-width: 40px;
+    max-width: 40px;
+
+    padding: 0;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    font-size: 16px;
+}
+
+/* =========================================================
+   ROBOT LIBRARY
+   ========================================================= */
+
+#robot-library {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 6px;
+
+    min-width: 0;
+}
+
+
+.preset-button {
+    width: 100%;
+
+    padding: 10px;
+
+    text-align: left;
+
+    background: #353535;
+
+    border: 1px solid #555555;
+}
+
+
+.preset-button:hover:not(:disabled) {
+    background: #4a4a4a;
+}
+
+
+/* =========================================================
+   BUTTONS
+   ========================================================= */
+
+button {
+    background: #3a3a3a;
+
+    color: #eeeeee;
+
+    border: 1px solid #666666;
+
+    border-radius: 4px;
+
+    padding:
+        6px
+        10px;
+
+    transition:
+        background 0.1s ease,
+        border-color 0.1s ease;
+}
+
+
+button:hover:not(:disabled) {
+    background: #505050;
+
+    border-color: #777777;
+}
+
+
+button:active:not(:disabled) {
+    background: #5a5a5a;
+}
+
+
+button:disabled {
+    opacity: 0.4;
+
+    cursor: default;
+}
+
+
+/* =========================================================
+   BUILD ROBOT BUTTON
+   ========================================================= */
+
+.primary-button {
+    width: 100%;
+
+    padding: 12px;
+
+    font-weight: bold;
+
+    font-size: 15px;
+}
+
+
+/* =========================================================
+   SCROLLBARS
+   ========================================================= */
+
+#left-panel,
+#right-content {
+    scrollbar-width: thin;
+
+    scrollbar-color:
+        #555555
+        #222222;
+}
+
+
+#left-panel::-webkit-scrollbar,
+#right-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+
+#left-panel::-webkit-scrollbar-track,
+#right-content::-webkit-scrollbar-track {
+    background: #222222;
+}
+
+
+#left-panel::-webkit-scrollbar-thumb,
+#right-content::-webkit-scrollbar-thumb {
+    background: #555555;
+
+    border-radius: 4px;
+}
+
+
+#left-panel::-webkit-scrollbar-thumb:hover,
+#right-content::-webkit-scrollbar-thumb:hover {
+    background: #666666;
+}
+
+
+/* =========================================================
+   SMALL SCREEN
+   ========================================================= */
+
+@media (max-width: 1100px) {
+
+    #app {
+        grid-template-columns:
+            250px
+            minmax(400px, 1fr)
+            350px;
+    }
+
+
+    #viewer-header {
+        padding:
+            0
+            8px;
+    }
+
+
+    #status {
+        max-width: 180px;
+    }
+
+}

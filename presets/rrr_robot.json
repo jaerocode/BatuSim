@@ -1,0 +1,64 @@
+{
+  "id": "rrr_3dof",
+  "name": "RRR 3-DOF Robot",
+  "category": "Preset",
+  "readonly": true,
+  "dof": 3,
+
+  "dh_table": [
+    {
+      "theta": "q1",
+      "d": "0",
+      "a": "L1",
+      "alpha": "0",
+      "type": "R",
+      "min": -180,
+      "max": 180
+    },
+    {
+      "theta": "q2",
+      "d": "0",
+      "a": "L2",
+      "alpha": "0",
+      "type": "R",
+      "min": -180,
+      "max": 180
+    },
+    {
+      "theta": "q3",
+      "d": "0",
+      "a": "L3",
+      "alpha": "0",
+      "type": "R",
+      "min": -180,
+      "max": 180
+    },
+
+    {
+      "theta": "0",
+      "d": "0",
+      "a": "0",
+      "alpha": "0",
+      "type": "TOOL"
+    }
+  ],
+
+  "parameters": {
+    "L1": 200,
+    "L2": 150,
+    "L3": 100
+  },
+
+  "home": {
+    "q1": 30,
+    "q2": 45,
+    "q3": -45
+  },
+
+  "metadata": {
+    "description": "3-DOF planar RRR robot preset",
+    "source": "Built-in preset",
+    "editable": true,
+    "save_as_new_only": true
+  }
+}

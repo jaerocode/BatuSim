@@ -1,0 +1,59 @@
+{
+  "id": "cartesian_3dof",
+  "name": "Cartesian 3-DOF Robot",
+  "category": "Preset",
+  "readonly": true,
+  "dof": 3,
+
+  "dh_table": [
+    {
+      "theta": "0",
+      "d": "q1",
+      "a": "0",
+      "alpha": "-90",
+      "type": "P",
+      "min": 0,
+      "max": 500
+    },
+    {
+      "theta": "90",
+      "d": "q2",
+      "a": "0",
+      "alpha": "90",
+      "type": "P",
+      "min": 0,
+      "max": 500
+    },
+    {
+      "theta": "-90",
+      "d": "q3",
+      "a": "0",
+      "alpha": "0",
+      "type": "P",
+      "min": 0,
+      "max": 500
+    },
+    {
+      "theta": "0",
+      "d": "0",
+      "a": "0",
+      "alpha": "0",
+      "type": "TOOL"
+    }
+  ],
+
+  "parameters": {},
+
+  "home": {
+    "q1": 50,
+    "q2": 50,
+    "q3": 50
+  },
+
+  "metadata": {
+    "description": "3-DOF Cartesian preset",
+    "source": "Built-in preset",
+    "editable": true,
+    "save_as_new_only": true
+  }
+}

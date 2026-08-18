@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Robot Simulator
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="/static/style.css"
+    >
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.170.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/"
+        }
+    }
+    </script>
+
+</head>
+
+
+<body>
+
+<div id="app">
+
+
+    <!-- ================================================== -->
+    <!-- LEFT PANEL -->
+    <!-- ================================================== -->
+
+    <aside id="left-panel">
+
+
+        <!-- ================================================== -->
+        <!-- LINEAR JOG -->
+        <!-- ================================================== -->
+
+        <section class="panel-section">
+
+            <h2>
+                Linear Jog
+            </h2>
+
+
+            <div class="step-row">
+
+                <label for="linear-step">
+                    Step
+                </label>
+
+                <input
+                    id="linear-step"
+                    type="number"
+                    value="10"
+                    min="0.1"
+                    step="1"
+                >
+
+                <span>
+                    mm
+                </span>
+
+            </div>
+
+
+            <div class="jog-grid">
+
+                <button
+                    id="jog-x-minus"
+                    class="linear-jog-button"
+                    data-axis="X"
+                    data-direction="-1"
+                    disabled
+                >
+                    X -
+                </button>
+
+
+                <button
+                    id="jog-x-plus"
+                    class="linear-jog-button"
+                    data-axis="X"
+                    data-direction="1"
+                    disabled
+                >
+                    X +
+                </button>
+
+
+                <button
+                    id="jog-y-minus"
+                    class="linear-jog-button"
+                    data-axis="Y"
+                    data-direction="-1"
+                    disabled
+                >
+                    Y -
+                </button>
+
+
+                <button
+                    id="jog-y-plus"
+                    class="linear-jog-button"
+                    data-axis="Y"
+                    data-direction="1"
+                    disabled
+                >
+                    Y +
+                </button>
+
+
+                <button
+                    id="jog-z-minus"
+                    class="linear-jog-button"
+                    data-axis="Z"
+                    data-direction="-1"
+                    disabled
+                >
+                    Z -
+                </button>
+
+
+                <button
+                    id="jog-z-plus"
+                    class="linear-jog-button"
+                    data-axis="Z"
+                    data-direction="1"
+                    disabled
+                >
+                    Z +
+                </button>
+
+            </div>
+
+
+            <!-- ================================================== -->
+            <!-- TCP DISPLAY -->
+            <!-- ================================================== -->
+
+            <div id="tcp-display">
+
+                <h3>
+                    TCP
+                </h3>
+
+
+                <div>
+
+                    X =
+                    <span id="tcp-x">
+                        ---
+                    </span>
+                    mm
+
+                </div>
+
+
+                <div>
+
+                    Y =
+                    <span id="tcp-y">
+                        ---
+                    </span>
+                    mm
+
+                </div>
+
+
+                <div>
+
+                    Z =
+                    <span id="tcp-z">
+                        ---
+                    </span>
+                    mm
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ================================================== -->
+        <!-- JOINT JOG -->
+        <!-- ================================================== -->
+
+        <section class="panel-section grow">
+
+            <h2>
+                Joint Jog
+            </h2>
+
+
+            <!-- ================================================== -->
+            <!-- JOINT STEPS -->
+            <!-- ================================================== -->
+
+            <div class="joint-step-box">
+
+                <div class="step-row">
+
+                    <label for="revolute-step">
+                        R Step
+                    </label>
+
+                    <input
+                        id="revolute-step"
+                        type="number"
+                        value="1"
+                        min="0.1"
+                        step="0.1"
+                    >
+
+                    <span>
+                        deg
+                    </span>
+
+                </div>
+
+
+                <div class="step-row">
+
+                    <label for="prismatic-step">
+                        P Step
+                    </label>
+
+                    <input
+                        id="prismatic-step"
+                        type="number"
+                        value="5"
+                        min="0.1"
+                        step="1"
+                    >
+
+                    <span>
+                        mm
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <!-- ================================================== -->
+            <!-- ABB STYLE JOINT JOG -->
+            <!-- ================================================== -->
+
+            <div id="joint-jog-list">
+
+                <div id="joint-jog-placeholder">
+
+                    Robot oluşturulduktan sonra
+                    jointler burada görünecek.
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ================================================== -->
+        <!-- ROBOT LIBRARY -->
+        <!-- ================================================== -->
+
+        <section class="panel-section">
+
+            <h2>
+                Robot Library
+            </h2>
+
+
+            <div id="robot-library">
+
+                Presetler yükleniyor...
+
+            </div>
+
+        </section>
+
+
+    </aside>
+
+
+
+    <!-- ================================================== -->
+    <!-- CENTER / 3D -->
+    <!-- ================================================== -->
+
+    <main id="viewer-panel">
+
+
+        <!-- ================================================== -->
+        <!-- VIEWER HEADER -->
+        <!-- ================================================== -->
+
+        <div id="viewer-header">
+
+
+            <div id="viewer-title">
+
+                3D Robot Viewer
+
+            </div>
+
+
+            <div id="viewer-controls">
+
+
+                <button id="reframe-button">
+
+                    Reframe
+
+                </button>
+
+
+                <span id="status">
+
+                    Backend bağlantısı bekleniyor...
+
+                </span>
+
+
+            </div>
+
+        </div>
+
+
+        <!-- ================================================== -->
+        <!-- THREE.JS VIEWER -->
+        <!-- ================================================== -->
+
+        <div id="three-container"></div>
+
+
+    </main>
+
+
+
+    <!-- ================================================== -->
+    <!-- RIGHT PANEL -->
+    <!-- ================================================== -->
+
+    <aside id="right-panel">
+
+
+        <!-- ================================================== -->
+        <!-- SCROLLABLE RIGHT CONTENT -->
+        <!-- ================================================== -->
+
+        <div id="right-content">
+
+
+            <!-- ================================================== -->
+            <!-- DH TABLE -->
+            <!-- ================================================== -->
+
+            <section class="panel-section">
+
+                <h2>
+                    DH Table
+                </h2>
+
+
+                <table id="dh-table">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                θ
+                            </th>
+
+                            <th>
+                                d
+                            </th>
+
+                            <th>
+                                a
+                            </th>
+
+                            <th>
+                                α
+                            </th>
+
+                            <th>
+                                Type
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody id="dh-body">
+
+                    </tbody>
+
+                </table>
+
+
+                <div class="row-buttons">
+
+
+                    <button id="add-row">
+
+                        + Row
+
+                    </button>
+
+
+                    <button id="remove-row">
+
+                        - Row
+
+                    </button>
+
+
+                </div>
+
+            </section>
+
+
+
+            <!-- ================================================== -->
+            <!-- PARAMETERS -->
+            <!-- ================================================== -->
+
+            <section class="panel-section">
+
+                <h2>
+                    Parameters
+                </h2>
+
+
+                <div id="parameter-list">
+
+                    DH tablosundaki L ve D parametreleri
+                    burada otomatik oluşacak.
+
+                </div>
+
+            </section>
+
+
+
+            <!-- ================================================== -->
+            <!-- HOME POSITION -->
+            <!-- ================================================== -->
+
+            <section class="panel-section">
+
+                <h2>
+                    Home Position
+                </h2>
+
+
+                <div id="home-list">
+
+                    DH tablosundaki q değişkenleri
+                    burada otomatik oluşacak.
+
+                </div>
+
+            </section>
+
+
+        </div>
+
+
+
+        <!-- ================================================== -->
+        <!-- FIXED BUILD FOOTER -->
+        <!-- ================================================== -->
+
+        <div id="build-footer">
+
+
+            <button
+                id="build-button"
+                class="primary-button"
+            >
+
+                Build Robot
+
+            </button>
+
+
+        </div>
+
+
+    </aside>
+
+
+</div>
+
+
+<script
+    type="module"
+    src="/static/app.js"
+></script>
+
+
+</body>
+
+</html>

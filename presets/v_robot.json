@@ -1,0 +1,75 @@
+{
+  "id": "v_robot_4dof",
+  "name": "V-ROBOT",
+  "category": "Preset",
+  "readonly": true,
+  "dof": 4,
+
+  "dh_table": [
+    {
+      "theta": "0",
+      "d": "q1+L0",
+      "a": "0",
+      "alpha": "0",
+      "type": "P",
+      "min": 0,
+      "max": 500
+    },
+    {
+      "theta": "q2",
+      "d": "0",
+      "a": "0",
+      "alpha": "90",
+      "type": "R",
+      "min": -180,
+      "max": 180
+    },
+    {
+      "theta": "0",
+      "d": "q3+L3",
+      "a": "0",
+      "alpha": "-90",
+      "type": "P",
+      "min": 0,
+      "max": 500
+    },
+    {
+      "theta": "q4-90",
+      "d": "L4",
+      "a": "0",
+      "alpha": "0",
+      "type": "R",
+      "min": -180,
+      "max": 180
+    },
+    {
+      "theta": "0",
+      "d": "-LT",
+      "a": "L5",
+      "alpha": "180",
+      "type": "TOOL"
+    }
+  ],
+
+  "parameters": {
+    "L0": 100,
+    "L3": 250,
+    "L4": 50,
+    "L5": 75,
+    "LT": 50
+  },
+
+  "home": {
+    "q1": 60,
+    "q2": 90,
+    "q3": 50,
+    "q4": 0
+  },
+
+  "metadata": {
+    "description": "4-DOF V-ROBOT preset",
+    "source": "Built-in preset",
+    "editable": true,
+    "save_as_new_only": true
+  }
+}

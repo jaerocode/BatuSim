@@ -49,6 +49,13 @@ from backend.jog_control import (
     linear_jog
 )
 
+# ============================================================
+# DIRECTOR MODE
+# ============================================================
+
+from backend.director import (
+    plan_director_program
+)
 
 # ============================================================
 # PATHS
@@ -139,6 +146,32 @@ class LinearJogRequest(BaseModel):
 
     step: float = 10.0
 
+class DirectorCommand(BaseModel):
+
+    type: str
+
+    axis: str | None = None
+
+    joint: str | None = None
+
+    value: float
+
+
+class DirectorRequest(BaseModel):
+
+    dh_table: list[DHRow]
+
+    values: dict[str, float | None]
+
+    commands: list[DirectorCommand]
+
+    linear_step_mm: float = 5.0
+
+    rotation_step_deg: float = 2.0
+
+    revolute_step_deg: float = 2.0
+
+    prismatic_step_mm: float = 5.0
 
 # ============================================================
 # HELPERS
@@ -872,6 +905,167 @@ def api_linear_jog(
             detail=str(error)
         )
 
+# ============================================================
+# DIRECTOR MODE - PLAN PROGRAM
+# ============================================================
+
+@app.post("/api/director/plan")
+def api_director_plan(
+    request: DirectorRequest
+):
+
+    try:
+
+        # ====================================================
+        # DH TABLE
+        # ====================================================
+
+        dh_table = [
+            row.model_dump()
+            for row in request.dh_table
+        ]
+
+
+        # ====================================================
+        # VALUES
+        # ====================================================
+
+        values = clean_values(
+            request.values
+        )
+
+
+        # ====================================================
+        # JOINTS
+        # ====================================================
+
+        joints = create_joints(
+            dh_table,
+            values
+        )
+
+
+        if not joints:
+
+            raise ValueError(
+                "Robot hareketli joint içermiyor."
+            )
+
+
+        # ====================================================
+        # PARAMETERS
+        # ====================================================
+
+        parameters = get_parameters(
+            values
+        )
+
+
+        # ====================================================
+        # FK
+        # ====================================================
+
+        FK = get_cached_fk(
+            dh_table,
+            joints,
+            parameters
+        )
+
+
+        # ====================================================
+        # COMMANDS
+        # ====================================================
+
+        commands = [
+            command.model_dump()
+            for command in request.commands
+        ]
+
+
+        # ====================================================
+        # DIRECTOR PLANNER
+        # ====================================================
+
+        result = plan_director_program(
+
+            commands=commands,
+
+            values=values,
+
+            joints=joints,
+
+            fk_function=FK,
+
+            linear_step_mm=
+                request.linear_step_mm,
+
+            rotation_step_deg=
+                request.rotation_step_deg,
+
+            revolute_step_deg=
+                request.revolute_step_deg,
+
+            prismatic_step_mm=
+                request.prismatic_step_mm
+
+        )
+
+
+        # ====================================================
+        # TRAJECTORY FRAMES
+        #
+        # director.py q trajectory üretir.
+        # Frontend animasyon için her q noktasında gerçek
+        # robot frame'lerine ihtiyaç duyacak.
+        #
+        # O yüzden burada trajectory'ye frames ekliyoruz.
+        # ====================================================
+
+        if (
+            result.get(
+                "trajectory"
+            )
+        ):
+
+            for point in result[
+                "trajectory"
+            ]:
+
+                q_vector = np.array(
+
+                    point[
+                        "q_vector"
+                    ],
+
+                    dtype=float
+
+                )
+
+
+                frames, T_tool = (
+                    forward_kinematics(
+                        q_vector,
+                        FK
+                    )
+                )
+
+
+                point[
+                    "frames"
+                ] = frames_to_json(
+                    frames
+                )
+
+
+        return result
+
+
+    except Exception as error:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(error)
+        )
 
 # ============================================================
 # PRESET LIST

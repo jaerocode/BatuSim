@@ -2,6 +2,7 @@
 <html lang="tr">
 
 <head>
+
     <meta charset="UTF-8">
 
     <meta
@@ -9,9 +10,7 @@
         content="width=device-width, initial-scale=1.0"
     >
 
-    <title>
-        Robot Simulator
-    </title>
+    <title>BatuSim</title>
 
     <link
         rel="stylesheet"
@@ -156,35 +155,29 @@
 
 
                 <div>
-
                     X =
                     <span id="tcp-x">
                         ---
                     </span>
                     mm
-
                 </div>
 
 
                 <div>
-
                     Y =
                     <span id="tcp-y">
                         ---
                     </span>
                     mm
-
                 </div>
 
 
                 <div>
-
                     Z =
                     <span id="tcp-z">
                         ---
                     </span>
                     mm
-
                 </div>
 
             </div>
@@ -203,10 +196,6 @@
                 Joint Jog
             </h2>
 
-
-            <!-- ================================================== -->
-            <!-- JOINT STEPS -->
-            <!-- ================================================== -->
 
             <div class="joint-step-box">
 
@@ -254,10 +243,6 @@
             </div>
 
 
-            <!-- ================================================== -->
-            <!-- ABB STYLE JOINT JOG -->
-            <!-- ================================================== -->
-
             <div id="joint-jog-list">
 
                 <div id="joint-jog-placeholder">
@@ -304,10 +289,6 @@
     <main id="viewer-panel">
 
 
-        <!-- ================================================== -->
-        <!-- VIEWER HEADER -->
-        <!-- ================================================== -->
-
         <div id="viewer-header">
 
 
@@ -340,10 +321,6 @@
         </div>
 
 
-        <!-- ================================================== -->
-        <!-- THREE.JS VIEWER -->
-        <!-- ================================================== -->
-
         <div id="three-container"></div>
 
 
@@ -359,125 +336,32 @@
 
 
         <!-- ================================================== -->
-        <!-- SCROLLABLE RIGHT CONTENT -->
+        <!-- MODE TABS -->
         <!-- ================================================== -->
 
-        <div id="right-content">
+        <div id="mode-tabs">
 
 
-            <!-- ================================================== -->
-            <!-- DH TABLE -->
-            <!-- ================================================== -->
+            <button
+                id="builder-tab-button"
+                class="mode-tab active"
+                type="button"
+            >
 
-            <section class="panel-section">
+                Robot Builder
 
-                <h2>
-                    DH Table
-                </h2>
-
-
-                <table id="dh-table">
-
-                    <thead>
-
-                        <tr>
-
-                            <th>
-                                θ
-                            </th>
-
-                            <th>
-                                d
-                            </th>
-
-                            <th>
-                                a
-                            </th>
-
-                            <th>
-                                α
-                            </th>
-
-                            <th>
-                                Type
-                            </th>
-
-                        </tr>
-
-                    </thead>
+            </button>
 
 
-                    <tbody id="dh-body">
+            <button
+                id="director-tab-button"
+                class="mode-tab"
+                type="button"
+            >
 
-                    </tbody>
+                Director
 
-                </table>
-
-
-                <div class="row-buttons">
-
-
-                    <button id="add-row">
-
-                        + Row
-
-                    </button>
-
-
-                    <button id="remove-row">
-
-                        - Row
-
-                    </button>
-
-
-                </div>
-
-            </section>
-
-
-
-            <!-- ================================================== -->
-            <!-- PARAMETERS -->
-            <!-- ================================================== -->
-
-            <section class="panel-section">
-
-                <h2>
-                    Parameters
-                </h2>
-
-
-                <div id="parameter-list">
-
-                    DH tablosundaki L ve D parametreleri
-                    burada otomatik oluşacak.
-
-                </div>
-
-            </section>
-
-
-
-            <!-- ================================================== -->
-            <!-- HOME POSITION -->
-            <!-- ================================================== -->
-
-            <section class="panel-section">
-
-                <h2>
-                    Home Position
-                </h2>
-
-
-                <div id="home-list">
-
-                    DH tablosundaki q değişkenleri
-                    burada otomatik oluşacak.
-
-                </div>
-
-            </section>
+            </button>
 
 
         </div>
@@ -485,20 +369,476 @@
 
 
         <!-- ================================================== -->
-        <!-- FIXED BUILD FOOTER -->
+        <!-- ROBOT BUILDER MODE -->
         <!-- ================================================== -->
 
-        <div id="build-footer">
+        <div
+            id="builder-mode"
+            class="right-mode active"
+        >
 
 
-            <button
-                id="build-button"
-                class="primary-button"
-            >
+            <!-- ================================================== -->
+            <!-- EXISTING SCROLLABLE CONTENT -->
+            <!-- ================================================== -->
 
-                Build Robot
+            <div id="right-content">
 
-            </button>
+
+                <!-- ================================================== -->
+                <!-- DH TABLE -->
+                <!-- ================================================== -->
+
+                <section class="panel-section">
+
+                    <h2>
+                        DH Table
+                    </h2>
+
+
+                    <table id="dh-table">
+
+                        <thead>
+
+                            <tr>
+
+                                <th>
+                                    θ
+                                </th>
+
+                                <th>
+                                    d
+                                </th>
+
+                                <th>
+                                    a
+                                </th>
+
+                                <th>
+                                    α
+                                </th>
+
+                                <th>
+                                    Type
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody id="dh-body">
+
+                        </tbody>
+
+                    </table>
+
+
+                    <div class="row-buttons">
+
+
+                        <button id="add-row">
+
+                            + Row
+
+                        </button>
+
+
+                        <button id="remove-row">
+
+                            - Row
+
+                        </button>
+
+
+                    </div>
+
+                </section>
+
+
+
+                <!-- ================================================== -->
+                <!-- PARAMETERS -->
+                <!-- ================================================== -->
+
+                <section class="panel-section">
+
+                    <h2>
+                        Parameters
+                    </h2>
+
+
+                    <div id="parameter-list">
+
+                        DH tablosundaki L ve D parametreleri
+                        burada otomatik oluşacak.
+
+                    </div>
+
+                </section>
+
+
+
+                <!-- ================================================== -->
+                <!-- HOME POSITION -->
+                <!-- ================================================== -->
+
+                <section class="panel-section">
+
+                    <h2>
+                        Home Position
+                    </h2>
+
+
+                    <div id="home-list">
+
+                        DH tablosundaki q değişkenleri
+                        burada otomatik oluşacak.
+
+                    </div>
+
+                </section>
+
+
+            </div>
+
+
+
+            <!-- ================================================== -->
+            <!-- BUILDER FOOTER -->
+            <!-- ================================================== -->
+
+            <div id="build-footer">
+
+
+                <button
+                    id="build-button"
+                    class="primary-button"
+                >
+
+                    Build Robot
+
+                </button>
+
+
+            </div>
+
+
+        </div>
+
+
+
+        <!-- ================================================== -->
+        <!-- DIRECTOR MODE -->
+        <!-- ================================================== -->
+
+        <div
+            id="director-mode"
+            class="right-mode"
+        >
+
+
+            <!-- ================================================== -->
+            <!-- DIRECTOR SCROLLABLE AREA -->
+            <!-- ================================================== -->
+
+            <div id="director-content">
+
+
+                <!-- ================================================== -->
+                <!-- PROGRAM -->
+                <!-- ================================================== -->
+
+                <section class="panel-section director-program-section">
+
+
+                    <div class="director-section-header">
+
+                        <h2>
+                            Program
+                        </h2>
+
+
+                        <button
+                            id="director-clear-button"
+                            class="small-button"
+                            type="button"
+                        >
+
+                            Clear
+
+                        </button>
+
+                    </div>
+
+
+                    <div id="director-program-list">
+
+
+                        <div id="director-program-placeholder">
+
+                            Program boş.
+                            Aşağıdaki komutlardan birini seç.
+
+                        </div>
+
+
+                    </div>
+
+
+                </section>
+
+
+
+                <!-- ================================================== -->
+                <!-- COMMAND LIBRARY -->
+                <!-- ================================================== -->
+
+                <section class="panel-section">
+
+
+                    <h2>
+                        Commands
+                    </h2>
+
+
+                    <div class="director-command-group">
+
+
+                        <div class="director-command-title">
+
+                            Linear Motion
+
+                        </div>
+
+
+                        <button
+                            class="director-command-button"
+                            type="button"
+                            data-director-command="MOVE_LINEAR"
+                            data-axis="X"
+                            data-label="Linear X"
+                            data-unit="mm"
+                        >
+
+                            + Linear X
+
+                        </button>
+
+
+                        <button
+                            class="director-command-button"
+                            type="button"
+                            data-director-command="MOVE_LINEAR"
+                            data-axis="Y"
+                            data-label="Linear Y"
+                            data-unit="mm"
+                        >
+
+                            + Linear Y
+
+                        </button>
+
+
+                        <button
+                            class="director-command-button"
+                            type="button"
+                            data-director-command="MOVE_LINEAR"
+                            data-axis="Z"
+                            data-label="Linear Z"
+                            data-unit="mm"
+                        >
+
+                            + Linear Z
+
+                        </button>
+
+
+                    </div>
+
+
+
+                    <div class="director-command-group">
+
+
+                        <div class="director-command-title">
+
+                            Orientation
+
+                        </div>
+
+
+                        <button
+                            class="director-command-button"
+                            type="button"
+                            data-director-command="ROTATE_TCP"
+                            data-axis="X"
+                            data-label="Roll"
+                            data-unit="deg"
+                        >
+
+                            + Roll
+
+                        </button>
+
+
+                        <button
+                            class="director-command-button"
+                            type="button"
+                            data-director-command="ROTATE_TCP"
+                            data-axis="Y"
+                            data-label="Pitch"
+                            data-unit="deg"
+                        >
+
+                            + Pitch
+
+                        </button>
+
+
+                        <button
+                            class="director-command-button"
+                            type="button"
+                            data-director-command="ROTATE_TCP"
+                            data-axis="Z"
+                            data-label="Yaw"
+                            data-unit="deg"
+                        >
+
+                            + Yaw
+
+                        </button>
+
+
+                    </div>
+
+
+                </section>
+
+
+
+                <!-- ================================================== -->
+                <!-- PLAYBACK -->
+                <!-- ================================================== -->
+
+                <section class="panel-section">
+
+
+                    <h2>
+                        Playback
+                    </h2>
+
+
+                    <div class="director-speed-row">
+
+
+                        <label for="director-speed">
+
+                            Speed
+
+                        </label>
+
+
+                        <input
+                            id="director-speed"
+                            type="range"
+                            min="10"
+                            max="200"
+                            value="30"
+                            step="10"
+                        >
+
+
+                        <span id="director-speed-value">
+
+                            100%
+
+                        </span>
+
+
+                    </div>
+
+
+                </section>
+
+
+
+                <!-- ================================================== -->
+                <!-- DIRECTOR STATUS -->
+                <!-- ================================================== -->
+
+                <section class="panel-section">
+
+
+                    <h2>
+                        Program Status
+                    </h2>
+
+
+                    <div
+                        id="director-status"
+                        class="director-status ready"
+                    >
+
+                        Ready
+
+                    </div>
+
+
+                    <div id="director-progress">
+
+                        0 / 0
+
+                    </div>
+
+
+                </section>
+
+
+            </div>
+
+
+
+            <!-- ================================================== -->
+            <!-- DIRECTOR FOOTER -->
+            <!-- ================================================== -->
+
+            <div id="director-footer">
+
+
+                <button
+                    id="director-run-button"
+                    class="primary-button director-run-button"
+                    type="button"
+                >
+
+                    ▶ Çalıştır
+
+                </button>
+
+
+                <button
+                    id="director-stop-button"
+                    class="director-stop-button"
+                    type="button"
+                    disabled
+                >
+
+                    ■ Stop
+
+                </button>
+
+                <button
+                    
+                    id="director-reset-button"
+                    type="button"
+>
+                    ↺ Reset
+
+                </button>
+
+
+            </div>
 
 
         </div>

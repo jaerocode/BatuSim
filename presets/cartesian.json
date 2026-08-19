@@ -8,31 +8,34 @@
   "dh_table": [
     {
       "theta": "0",
-      "d": "q1",
+      "d": "L1 + q1",
       "a": "0",
       "alpha": "-90",
       "type": "P",
       "min": 0,
       "max": 500
     },
+
     {
       "theta": "90",
-      "d": "q2",
+      "d": "L2 + q2",
       "a": "0",
       "alpha": "90",
       "type": "P",
       "min": 0,
       "max": 500
     },
+
     {
       "theta": "-90",
-      "d": "q3",
+      "d": "L3 + q3",
       "a": "0",
       "alpha": "0",
       "type": "P",
       "min": 0,
       "max": 500
     },
+
     {
       "theta": "0",
       "d": "0",
@@ -42,7 +45,11 @@
     }
   ],
 
-  "parameters": {},
+  "parameters": {
+    "L1": 150,
+    "L2": 150,
+    "L3": 150
+  },
 
   "home": {
     "q1": 50,
@@ -51,7 +58,7 @@
   },
 
   "metadata": {
-    "description": "3-DOF Cartesian preset",
+    "description": "3-DOF Cartesian preset with fixed prismatic body offsets",
     "source": "Built-in preset",
     "editable": true,
     "save_as_new_only": true

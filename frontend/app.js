@@ -9,6 +9,11 @@ import {
 // DOM
 // ============================================================
 
+const directorResetButton =
+    document.getElementById(
+        "director-reset-button"
+    );
+
 const reframeButton =
     document.getElementById(
         "reframe-button"
@@ -99,6 +104,83 @@ const tcpZ =
         "tcp-z"
     );
 
+// ============================================================
+// DIRECTOR DOM
+// ============================================================
+
+const builderTabButton =
+    document.getElementById(
+        "builder-tab-button"
+    );
+
+const directorTabButton =
+    document.getElementById(
+        "director-tab-button"
+    );
+
+const builderMode =
+    document.getElementById(
+        "builder-mode"
+    );
+
+const directorMode =
+    document.getElementById(
+        "director-mode"
+    );
+
+
+const directorProgramList =
+    document.getElementById(
+        "director-program-list"
+    );
+
+const directorProgramPlaceholder =
+    document.getElementById(
+        "director-program-placeholder"
+    );
+
+const directorCommandButtons =
+    document.querySelectorAll(
+        ".director-command-button"
+    );
+
+
+const directorClearButton =
+    document.getElementById(
+        "director-clear-button"
+    );
+
+const directorRunButton =
+    document.getElementById(
+        "director-run-button"
+    );
+
+const directorStopButton =
+    document.getElementById(
+        "director-stop-button"
+    );
+
+
+const directorSpeedInput =
+    document.getElementById(
+        "director-speed"
+    );
+
+const directorSpeedValue =
+    document.getElementById(
+        "director-speed-value"
+    );
+
+
+const directorStatus =
+    document.getElementById(
+        "director-status"
+    );
+
+const directorProgress =
+    document.getElementById(
+        "director-progress"
+    );
 
 // ============================================================
 // CURRENT ROBOT STATE
@@ -115,6 +197,31 @@ let currentFrames = [];
 let robotBuilt = false;
 
 let firstFrameDone = false;
+
+// ============================================================
+// DIRECTOR STATE
+// ============================================================
+
+let directorProgram = [];
+
+let directorTrajectory = [];
+
+let directorStartValues =
+    null;
+
+let directorRunning = false;
+
+let directorAnimationId = null;
+
+let directorCurrentIndex = 0;
+
+let directorLastTimestamp = null;
+
+let directorAccumulator = 0;
+
+
+// 100% hızda saniyede kaç trajectory point oynatılacak.
+const DIRECTOR_BASE_POINTS_PER_SECOND = 30;
 
 
 // ============================================================
@@ -137,21 +244,6 @@ function sleep(
 
 // ============================================================
 // SAFE API RESPONSE
-//
-// Render bazen cold start / deploy sırasında JSON yerine:
-//
-// Not Found
-// Bad Gateway
-// Service Unavailable
-//
-// gibi plain-text cevaplar döndürebilir.
-//
-// response.json() kullanırsak:
-// Unexpected token 'N'
-//
-// hatası oluşur.
-//
-// Bu helper önce text okur, sonra güvenli şekilde JSON parse eder.
 // ============================================================
 
 async function readApiResponse(
@@ -212,51 +304,7 @@ async function readApiResponse(
 
 // ============================================================
 // SAFE API REQUEST
-//
-// Geçici Render hatalarında birkaç kez tekrar dener.
 // ============================================================
-// ============================================================
-// HOLD-TO-JOG
-// ============================================================
-
-let jogHoldTimeout = null;
-let jogHoldInterval = null;
-
-function startHoldJog(jogFunction) {
-
-    // Önce tek jog hemen çalışsın
-    jogFunction();
-
-    // Kısa basış ile uzun basışı ayır
-    jogHoldTimeout = setTimeout(() => {
-
-        // Basılı tutuluyorsa sürekli jog
-        jogHoldInterval = setInterval(() => {
-
-            jogFunction();
-
-        }, 80);
-
-    }, 150);
-}
-
-
-function stopHoldJog() {
-
-    if (jogHoldTimeout !== null) {
-
-        clearTimeout(jogHoldTimeout);
-        jogHoldTimeout = null;
-
-    }
-
-    if (jogHoldInterval !== null) {
-
-        clearInterval(jogHoldInterval);
-        jogHoldInterval = null;
-
-    }
-}
 
 async function apiRequest(
     url,
@@ -279,16 +327,16 @@ async function apiRequest(
                 await fetch(
                     url,
                     {
-                        cache: "no-store",
+                        cache:
+                            "no-store",
+
                         ...options
                     }
                 );
 
 
-            // Render deploy / wake-up sırasında
-            // geçici olarak bu kodları görebiliriz.
-
             const retryableStatus =
+
                 response.status === 404
                 ||
                 response.status === 408
@@ -312,8 +360,10 @@ async function apiRequest(
 
                 await sleep(
                     800
-                    * (attempt + 1)
+                    *
+                    (attempt + 1)
                 );
+
 
                 continue;
             }
@@ -341,7 +391,8 @@ async function apiRequest(
 
             await sleep(
                 800
-                * (attempt + 1)
+                *
+                (attempt + 1)
             );
         }
     }
@@ -359,17 +410,6 @@ async function apiRequest(
 
 // ============================================================
 // WAIT FOR BACKEND
-//
-// Render Free instance uyuyorsa backend'in ayağa kalkmasını
-// bekler.
-//
-// Böylece:
-//
-// checkBackend();
-// loadPresetLibrary();
-// createDemoRobot();
-//
-// üçlüsünü aynı anda ateşlemiyoruz.
 // ============================================================
 
 async function waitForBackend(
@@ -388,8 +428,11 @@ async function waitForBackend(
         try {
 
             statusText.textContent =
+
                 attempt === 1
+
                     ? "Backend bağlantısı bekleniyor..."
+
                     : `Backend uyanıyor... ${attempt}/${maxAttempts}`;
 
 
@@ -408,6 +451,7 @@ async function waitForBackend(
                 statusText.textContent =
                     "Backend bağlı";
 
+
                 return true;
             }
 
@@ -416,8 +460,12 @@ async function waitForBackend(
         catch (error) {
 
             console.log(
-                `Backend henüz hazır değil (${attempt}/${maxAttempts})`,
+
+                `Backend henüz hazır değil ` +
+                `(${attempt}/${maxAttempts})`,
+
                 error.message
+
             );
         }
 
@@ -483,7 +531,8 @@ camera.position.set(
 
 const renderer =
     new THREE.WebGLRenderer({
-        antialias: true
+        antialias:
+            true
     });
 
 
@@ -604,6 +653,29 @@ scene.add(
     robotGroup
 );
 
+// ============================================================
+// DIRECTOR TRAJECTORY GROUP
+//
+// Robot her redraw olduğunda robotGroup temizleniyor.
+//
+// Trajectory ise ayrı group'ta tutulduğu için
+// drawRobot() trajectory'yi silmez.
+// ============================================================
+
+const trajectoryGroup =
+    new THREE.Group();
+
+
+scene.add(
+    trajectoryGroup
+);
+
+
+let directorTrajectoryLine =
+    null;
+
+
+
 
 // ============================================================
 // RESIZE
@@ -691,11 +763,15 @@ function addDHRow(
 
 
     tr.dataset.min =
-        data.min ?? "";
+        data.min
+        ??
+        "";
 
 
     tr.dataset.max =
-        data.max ?? "";
+        data.max
+        ??
+        "";
 
 
     const fields = [
@@ -725,7 +801,8 @@ function addDHRow(
 
         input.value =
             data[field]
-            ?? "0";
+            ??
+            "0";
 
 
         input.dataset.field =
@@ -797,7 +874,8 @@ function addDHRow(
 
     select.value =
         data.type
-        ?? "FIXED";
+        ??
+        "FIXED";
 
 
     select.addEventListener(
@@ -854,23 +932,28 @@ function readDHTable() {
 
             theta:
                 inputs[0]?.value
-                || "0",
+                ||
+                "0",
 
             d:
                 inputs[1]?.value
-                || "0",
+                ||
+                "0",
 
             a:
                 inputs[2]?.value
-                || "0",
+                ||
+                "0",
 
             alpha:
                 inputs[3]?.value
-                || "0",
+                ||
+                "0",
 
             type:
                 select?.value
-                || "FIXED"
+                ||
+                "FIXED"
 
         };
 
@@ -932,10 +1015,13 @@ function readCurrentValues() {
                 values[
                     input.dataset.symbol
                 ] =
+
                     Number.isFinite(
                         value
                     )
+
                         ? value
+
                         : 0;
 
             }
@@ -961,6 +1047,9 @@ function onDHChanged() {
 
 
     disableLinearJog();
+
+
+    stopHoldJog();
 
 
     clearTimeout(
@@ -1093,7 +1182,8 @@ function createParameterInputs(
     const names =
         Object.keys(
             values
-            ?? {}
+            ??
+            {}
         ).sort(
             naturalSymbolSort
         );
@@ -1168,10 +1258,13 @@ function createValueRow(
 
 
     row.className =
+
         /^q\d+$/.test(
             symbol
         )
+
             ? "home-row"
+
             : "parameter-row";
 
 
@@ -1196,7 +1289,9 @@ function createValueRow(
 
 
     input.value =
-        value ?? 0;
+        value
+        ??
+        0;
 
 
     input.dataset.symbol =
@@ -1245,7 +1340,8 @@ function naturalSymbolSort(
         b,
         undefined,
         {
-            numeric: true
+            numeric:
+                true
         }
     );
 }
@@ -1261,17 +1357,28 @@ let buildTimer =
 
 function scheduleBuild() {
 
+    stopHoldJog();
+
+
     clearTimeout(
         buildTimer
     );
 
 
+    statusText.textContent =
+        "Değişiklik bekleniyor...";
+
+
+    // Kullanıcının L1/L2 vb. değerini yazmayı
+    // bitirmesini biraz bekle.
     buildTimer =
         setTimeout(
             buildRobot,
-            250
+            800
         );
 }
+
+
 
 
 // ============================================================
@@ -1279,6 +1386,9 @@ function scheduleBuild() {
 // ============================================================
 
 async function buildRobot() {
+
+    stopHoldJog();
+
 
     const dhTable =
         readDHTable();
@@ -1332,18 +1442,26 @@ async function buildRobot() {
             );
 
 
-        currentDHTable =
-            dhTable;
+currentDHTable =
+    dhTable;
 
 
-        currentRobotValues = {
-            ...data.values
-        };
+currentRobotValues = {
+    ...data.values
+};
 
 
-        drawRobot(
-            data.frames
-        );
+// ============================================================
+// JOINT INFO MUST BE READY BEFORE DRAW
+// ============================================================
+
+currentJointInfo =
+    extractJointInfo();
+
+
+drawRobot(
+    data.frames
+);
 
 
         // ====================================================
@@ -1472,7 +1590,1616 @@ function clearRobot() {
     }
 }
 
+// ============================================================
+// CLEAR DIRECTOR TRAJECTORY
+// ============================================================
 
+function clearDirectorTrajectory() {
+
+    while (
+        trajectoryGroup.children.length > 0
+    ) {
+
+        const child =
+            trajectoryGroup.children[0];
+
+
+        trajectoryGroup.remove(
+            child
+        );
+
+
+        disposeObject(
+            child
+        );
+    }
+
+
+    directorTrajectoryLine =
+        null;
+}
+
+
+// ============================================================
+// CREATE DIRECTOR TRAJECTORY
+//
+// Backend'in tcp_path:
+//
+// [
+//     [x, y, z],
+//     [x, y, z],
+//     ...
+// ]
+//
+// tek seferde geometry'ye çevrilir.
+//
+// Animasyon sırasında setDrawRange() kullanılarak
+// robot gittikçe çizgi uzatılır.
+// ============================================================
+
+// ============================================================
+// CREATE DIRECTOR TRAJECTORY
+// ============================================================
+
+function createDirectorTrajectory(
+    tcpPath
+) {
+
+    clearDirectorTrajectory();
+
+
+    if (
+        !Array.isArray(tcpPath)
+        ||
+        tcpPath.length < 2
+    ) {
+
+        console.warn(
+            "Trajectory çizilemedi. TCP path:",
+            tcpPath
+        );
+
+        return;
+    }
+
+
+    const points =
+        tcpPath.map(
+
+            position =>
+                new THREE.Vector3(
+
+                    Number(position[0]),
+                    Number(position[1]),
+                    Number(position[2])
+
+                )
+
+        );
+
+
+    console.log(
+        "Trajectory points:",
+        points
+    );
+
+
+    const geometry =
+        new THREE.BufferGeometry()
+            .setFromPoints(
+                points
+            );
+
+
+    const material =
+        new THREE.LineBasicMaterial({
+
+            color: 0x00ff00,   // yeşil,
+
+            depthTest: false,
+
+            depthWrite: false,
+
+            linewidth: 4
+
+        });
+
+
+    directorTrajectoryLine =
+        new THREE.Line(
+            geometry,
+            material
+        );
+
+
+    directorTrajectoryLine.renderOrder =
+        999;
+
+
+    directorTrajectoryLine.frustumCulled =
+        false;
+
+
+    geometry.setDrawRange(
+        0,
+        Math.min(
+            2,
+            points.length
+        )
+    );
+
+
+    trajectoryGroup.add(
+        directorTrajectoryLine
+    );
+
+
+    console.log(
+        "Trajectory line created:",
+        directorTrajectoryLine
+    );
+}
+// ============================================================
+// RIGHT PANEL MODE
+// ============================================================
+
+function setRightPanelMode(
+    mode
+) {
+
+    const directorSelected =
+        mode === "director";
+
+
+    builderMode.classList.toggle(
+
+        "active",
+
+        !directorSelected
+
+    );
+
+
+    directorMode.classList.toggle(
+
+        "active",
+
+        directorSelected
+
+    );
+
+
+    builderTabButton.classList.toggle(
+
+        "active",
+
+        !directorSelected
+
+    );
+
+
+    directorTabButton.classList.toggle(
+
+        "active",
+
+        directorSelected
+
+    );
+
+
+    // Director'a geçerken robot yoksa kullanıcıya belirt.
+    if (
+        directorSelected
+        &&
+        !robotBuilt
+    ) {
+
+        setDirectorStatus(
+
+            "Önce bir robot oluştur.",
+
+            "error"
+
+        );
+    }
+}
+
+// ============================================================
+// DIRECTOR STATUS
+// ============================================================
+
+function setDirectorStatus(
+    text,
+    state = "ready"
+) {
+
+    directorStatus.textContent =
+        text;
+
+
+    directorStatus.className =
+        `director-status ${state}`;
+}
+
+// ============================================================
+// ADD DIRECTOR COMMAND
+// ============================================================
+
+function addDirectorCommand(
+    commandData
+) {
+
+    directorProgram.push({
+
+        type:
+            commandData.type,
+
+        axis:
+            commandData.axis,
+
+        label:
+            commandData.label,
+
+        unit:
+            commandData.unit,
+
+        value:
+            0
+
+    });
+
+
+    renderDirectorProgram();
+
+
+    setDirectorStatus(
+        "Program edited",
+        "ready"
+    );
+}
+
+
+// ============================================================
+// REMOVE DIRECTOR COMMAND
+// ============================================================
+
+function removeDirectorCommand(
+    index
+) {
+
+    directorProgram.splice(
+        index,
+        1
+    );
+
+
+    renderDirectorProgram();
+}
+
+
+// ============================================================
+// CLEAR DIRECTOR PROGRAM
+// ============================================================
+
+function clearDirectorProgram() {
+
+    if (
+        directorRunning
+    ) {
+
+        return;
+    }
+
+
+    directorProgram = [];
+
+
+    renderDirectorProgram();
+
+
+    clearDirectorTrajectory();
+
+
+    directorProgress.textContent =
+        "0 / 0";
+
+
+    setDirectorStatus(
+        "Ready",
+        "ready"
+    );
+}
+
+
+// ============================================================
+// RENDER DIRECTOR PROGRAM
+// ============================================================
+
+function renderDirectorProgram() {
+
+    directorProgramList.innerHTML =
+        "";
+
+
+    if (
+        directorProgram.length === 0
+    ) {
+
+        const placeholder =
+            document.createElement(
+                "div"
+            );
+
+
+        placeholder.id =
+            "director-program-placeholder";
+
+
+        placeholder.textContent =
+            "Program boş. Aşağıdaki komutlardan birini seç.";
+
+
+        directorProgramList.appendChild(
+            placeholder
+        );
+
+
+        return;
+    }
+
+
+    directorProgram.forEach(
+
+        (
+            command,
+            index
+        ) => {
+
+            const row =
+                document.createElement(
+                    "div"
+                );
+
+
+            row.className =
+                "director-program-row";
+
+
+            // =================================================
+            // LINE NUMBER
+            // =================================================
+
+            const lineNumber =
+                document.createElement(
+                    "div"
+                );
+
+
+            lineNumber.className =
+                "director-program-number";
+
+
+            lineNumber.textContent =
+                index + 1;
+
+
+            // =================================================
+            // LABEL
+            // =================================================
+
+            const label =
+                document.createElement(
+                    "div"
+                );
+
+
+            label.className =
+                "director-program-label";
+
+
+            label.textContent =
+                command.label;
+
+
+            // =================================================
+            // VALUE
+            // =================================================
+
+            const input =
+                document.createElement(
+                    "input"
+                );
+
+
+            input.className =
+                "director-program-value";
+
+
+            input.type =
+                "number";
+
+
+            input.step =
+                command.unit === "deg"
+                    ? "1"
+                    : "5";
+
+
+            input.value =
+                command.value;
+
+
+            input.addEventListener(
+                "input",
+                () => {
+
+                    const value =
+                        Number(
+                            input.value
+                        );
+
+
+                    command.value =
+                        Number.isFinite(
+                            value
+                        )
+                            ? value
+                            : 0;
+
+
+                    clearDirectorTrajectory();
+
+
+                    setDirectorStatus(
+                        "Program edited",
+                        "ready"
+                    );
+
+                }
+            );
+
+
+            // =================================================
+            // UNIT
+            // =================================================
+
+            const unit =
+                document.createElement(
+                    "div"
+                );
+
+
+            unit.className =
+                "director-program-unit";
+
+
+            unit.textContent =
+                command.unit;
+
+
+            // =================================================
+            // REMOVE
+            // =================================================
+
+            const removeButton =
+                document.createElement(
+                    "button"
+                );
+
+
+            removeButton.className =
+                "director-program-remove";
+
+
+            removeButton.type =
+                "button";
+
+
+            removeButton.textContent =
+                "×";
+
+
+            removeButton.addEventListener(
+                "click",
+                () => {
+
+                    removeDirectorCommand(
+                        index
+                    );
+
+                }
+            );
+
+
+            row.append(
+
+                lineNumber,
+
+                label,
+
+                input,
+
+                unit,
+
+                removeButton
+
+            );
+
+
+            directorProgramList.appendChild(
+                row
+            );
+
+        }
+
+    );
+}
+
+// ============================================================
+// BUILD DIRECTOR COMMAND PAYLOAD
+// ============================================================
+
+function buildDirectorCommands() {
+
+    return directorProgram.map(
+
+        command => ({
+
+            type:
+                command.type,
+
+            axis:
+                command.axis,
+
+            value:
+                Number(
+                    command.value
+                )
+
+        })
+
+    );
+}
+
+// ============================================================
+// LOCK DIRECTOR / JOG CONTROLS
+// ============================================================
+
+function setDirectorRunningState(
+    running
+) {
+
+    directorRunning =
+        running;
+
+
+    directorRunButton.disabled =
+        running;
+
+
+    directorStopButton.disabled =
+        !running;
+
+
+    directorClearButton.disabled =
+        running;
+
+
+    builderTabButton.disabled =
+        running;
+
+
+    directorTabButton.disabled =
+        running;
+
+
+    directorCommandButtons.forEach(
+        button => {
+
+            button.disabled =
+                running;
+
+        }
+    );
+
+
+    document
+        .querySelectorAll(
+            ".director-program-value, .director-program-remove"
+        )
+        .forEach(
+            element => {
+
+                element.disabled =
+                    running;
+
+            }
+        );
+
+
+    linearJogButtons.forEach(
+        button => {
+
+            button.disabled =
+                running
+                ||
+                !robotBuilt;
+
+        }
+    );
+
+
+    document
+        .querySelectorAll(
+            ".joint-minus, .joint-plus"
+        )
+        .forEach(
+            button => {
+
+                button.disabled =
+                    running;
+
+            }
+        );
+}
+
+// ============================================================
+// APPLY DIRECTOR TRAJECTORY POINT
+// ============================================================
+
+function applyDirectorTrajectoryPoint(
+    point
+) {
+
+    if (
+        !point
+    ) {
+
+        return;
+    }
+
+
+    // ========================================================
+    // ROBOT VALUES
+    // ========================================================
+
+    if (
+        point.q
+    ) {
+
+        for (
+            const [name, value]
+            of Object.entries(
+                point.q
+            )
+        ) {
+
+            currentRobotValues[
+                name
+            ] =
+                Number(
+                    value
+                );
+        }
+    }
+
+
+    // ========================================================
+    // ROBOT GEOMETRY
+    // ========================================================
+
+    if (
+        point.frames
+    ) {
+
+        drawRobot(
+            point.frames
+        );
+    }
+
+
+    // ========================================================
+    // TCP
+    // ========================================================
+
+    if (
+        point.tcp
+    ) {
+
+        updateTCP(
+            point.tcp
+        );
+    }
+
+
+    // ========================================================
+    // JOINT VALUES
+    // ========================================================
+
+    if (
+        point.q
+    ) {
+
+        updateJointJogValues(
+            point.q
+        );
+    }
+}
+
+// ============================================================
+// START DIRECTOR ANIMATION
+// ============================================================
+
+function startDirectorAnimation(
+    trajectory
+) {
+
+    if (
+        !Array.isArray(
+            trajectory
+        )
+        ||
+        trajectory.length === 0
+    ) {
+
+        setDirectorStatus(
+            "Trajectory boş.",
+            "error"
+        );
+
+
+        return;
+    }
+
+
+    directorTrajectory =
+        trajectory;
+
+
+    directorCurrentIndex =
+        0;
+
+
+    directorLastTimestamp =
+        null;
+
+
+    directorAccumulator =
+        0;
+
+
+    setDirectorRunningState(
+        true
+    );
+
+
+    setDirectorStatus(
+        "Running...",
+        "running"
+    );
+
+
+    // İlk frame direkt göster.
+    applyDirectorTrajectoryPoint(
+        directorTrajectory[0]
+    );
+
+
+    directorCurrentIndex =
+        1;
+
+
+    updateDirectorTrajectoryTrace(
+        1
+    );
+
+
+    directorProgress.textContent =
+        `1 / ${directorTrajectory.length}`;
+
+
+    directorAnimationId =
+        requestAnimationFrame(
+            directorAnimationLoop
+        );
+}
+
+
+// ============================================================
+// DIRECTOR ANIMATION LOOP
+// ============================================================
+
+function directorAnimationLoop(
+    timestamp
+) {
+
+    if (
+        !directorRunning
+    ) {
+
+        return;
+    }
+
+
+    if (
+        directorLastTimestamp === null
+    ) {
+
+        directorLastTimestamp =
+            timestamp;
+    }
+
+
+    const deltaSeconds =
+
+        (
+            timestamp
+            -
+            directorLastTimestamp
+        )
+
+        /
+        1000;
+
+
+    directorLastTimestamp =
+        timestamp;
+
+
+    const speedPercent =
+        Number(
+            directorSpeedInput.value
+        );
+
+
+    const speedFactor =
+
+        Math.max(
+            0.1,
+            speedPercent / 100
+        );
+
+
+    const pointsPerSecond =
+
+        DIRECTOR_BASE_POINTS_PER_SECOND
+
+        *
+        speedFactor;
+
+
+    directorAccumulator +=
+
+        deltaSeconds
+
+        *
+        pointsPerSecond;
+
+
+    // ========================================================
+    // ADVANCE TRAJECTORY
+    // ========================================================
+
+    while (
+        directorAccumulator >= 1
+        &&
+        directorCurrentIndex
+        <
+        directorTrajectory.length
+    ) {
+
+        const point =
+            directorTrajectory[
+                directorCurrentIndex
+            ];
+
+
+        applyDirectorTrajectoryPoint(
+            point
+        );
+
+
+        directorCurrentIndex++;
+
+
+        directorAccumulator -=
+            1;
+
+
+        updateDirectorTrajectoryTrace(
+            directorCurrentIndex
+        );
+
+
+        directorProgress.textContent =
+
+            `${directorCurrentIndex} / ` +
+            `${directorTrajectory.length}`;
+
+    }
+
+
+    // ========================================================
+    // FINISHED
+    // ========================================================
+
+    if (
+        directorCurrentIndex
+        >=
+        directorTrajectory.length
+    ) {
+
+        finishDirectorAnimation();
+
+
+        return;
+    }
+
+
+    directorAnimationId =
+        requestAnimationFrame(
+            directorAnimationLoop
+        );
+}
+
+
+// ============================================================
+// FINISH DIRECTOR ANIMATION
+// ============================================================
+
+function finishDirectorAnimation() {
+
+    if (
+        directorAnimationId !== null
+    ) {
+
+        cancelAnimationFrame(
+            directorAnimationId
+        );
+
+
+        directorAnimationId =
+            null;
+    }
+
+
+    setDirectorRunningState(
+        false
+    );
+
+
+    updateDirectorTrajectoryTrace(
+        directorTrajectory.length
+    );
+
+
+    directorProgress.textContent =
+
+        `${directorTrajectory.length} / ` +
+        `${directorTrajectory.length}`;
+
+
+    setDirectorStatus(
+        "Program completed",
+        "success"
+    );
+
+
+    statusText.textContent =
+        "Director program tamamlandı";
+}
+
+// ============================================================
+// STOP DIRECTOR ANIMATION
+// ============================================================
+
+function stopDirectorAnimation(
+    showStatus = true
+) {
+
+    if (
+        directorAnimationId !== null
+    ) {
+
+        cancelAnimationFrame(
+            directorAnimationId
+        );
+
+
+        directorAnimationId =
+            null;
+    }
+
+
+    const wasRunning =
+        directorRunning;
+
+
+    setDirectorRunningState(
+        false
+    );
+
+
+    directorLastTimestamp =
+        null;
+
+
+    directorAccumulator =
+        0;
+
+
+    if (
+        showStatus
+        &&
+        wasRunning
+    ) {
+
+        setDirectorStatus(
+            "Program stopped",
+            "ready"
+        );
+
+
+        statusText.textContent =
+            "Director program durduruldu";
+    }
+}
+
+// ============================================================
+// RESET DIRECTOR
+// ============================================================
+
+async function resetDirectorProgram() {
+
+    // Çalışan animasyon varsa durdur.
+    stopDirectorAnimation(
+        false
+    );
+
+
+    clearDirectorTrajectory();
+
+
+    if (
+        !directorStartValues
+    ) {
+
+        setDirectorStatus(
+            "Reset pozisyonu bulunamadı.",
+            "error"
+        );
+
+        return;
+    }
+
+
+    try {
+
+        setDirectorStatus(
+            "Resetting...",
+            "running"
+        );
+
+
+        statusText.textContent =
+            "Robot başlangıç pozisyonuna dönüyor...";
+
+
+        // Başlangıç joint değerlerini geri yükle.
+        currentRobotValues = {
+            ...directorStartValues
+        };
+
+
+        // FK'yı yeniden hesaplat.
+        const data =
+            await apiRequest(
+                "/api/build",
+                {
+
+                    method:
+                        "POST",
+
+                    headers: {
+
+                        "Content-Type":
+                            "application/json"
+
+                    },
+
+                    body:
+                        JSON.stringify({
+
+                            dh_table:
+                                currentDHTable,
+
+                            values:
+                                currentRobotValues
+
+                        })
+
+                }
+            );
+
+
+        currentRobotValues = {
+            ...data.values
+        };
+
+
+        drawRobot(
+            data.frames
+        );
+
+
+        updateTCP(
+            data.tcp.position
+        );
+
+
+        updateJointJogValues(
+            currentRobotValues
+        );
+
+
+        directorTrajectory = [];
+
+        directorCurrentIndex = 0;
+
+        directorProgress.textContent =
+            "0 / 0";
+
+
+        setDirectorStatus(
+            "Reset complete",
+            "success"
+        );
+
+
+        statusText.textContent =
+            "Robot başlangıç pozisyonuna döndü";
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Director reset error:",
+            error
+        );
+
+
+        setDirectorStatus(
+            "Reset Error",
+            "error"
+        );
+
+
+        statusText.textContent =
+            "Reset hatası";
+    }
+}
+
+// ============================================================
+// DIRECTOR ERROR DISPLAY
+// ============================================================
+
+function showDirectorError(
+    data
+) {
+
+    const errorType =
+        data?.error_type
+        ??
+        "DIRECTOR_ERROR";
+
+
+    let title =
+        "Director Error";
+
+
+    if (
+        errorType ===
+        "JOINT_LIMIT_ERROR"
+    ) {
+
+        title =
+            "Joint Limit Error";
+    }
+
+
+    else if (
+        errorType ===
+        "REACH_ERROR"
+    ) {
+
+        title =
+            "Reach Error";
+    }
+
+
+    else if (
+        errorType ===
+        "SINGULARITY_ERROR"
+    ) {
+
+        title =
+            "Singularity Error";
+    }
+
+
+    const commandNumber =
+
+        Number.isFinite(
+            Number(
+                data?.command_index
+            )
+        )
+
+            ? Number(
+                data.command_index
+            ) + 1
+
+            : null;
+
+
+    let message =
+        title;
+
+
+    if (
+        commandNumber !== null
+        &&
+        commandNumber > 0
+    ) {
+
+        message +=
+            ` — Line ${commandNumber}`;
+    }
+
+
+    if (
+        data?.message
+    ) {
+
+        message +=
+            `: ${data.message}`;
+    }
+
+
+    setDirectorStatus(
+        message,
+        "error"
+    );
+
+
+    statusText.textContent =
+        title;
+}
+
+// ============================================================
+// RUN DIRECTOR PROGRAM
+// ============================================================
+
+async function runDirectorProgram() {
+
+    if (
+        directorRunning
+    ) {
+        return;
+    }
+
+
+    // ========================================================
+    // ROBOT CHECK
+    // ========================================================
+
+    if (
+        !robotBuilt
+    ) {
+
+        setDirectorStatus(
+            "Önce robot oluştur.",
+            "error"
+        );
+
+        return;
+    }
+
+
+    // ========================================================
+    // PROGRAM CHECK
+    // ========================================================
+
+    if (
+        directorProgram.length === 0
+    ) {
+
+        setDirectorStatus(
+            "Program boş.",
+            "error"
+        );
+
+        return;
+    }
+
+
+    // ========================================================
+    // PREPARE
+    // ========================================================
+
+    stopHoldJog();
+
+    stopHoldJog();
+
+
+// Program başlamadan önce robotun
+// başlangıç joint konumunu kaydet.
+directorStartValues = {
+    ...currentRobotValues
+};
+
+
+clearDirectorTrajectory();
+
+    clearDirectorTrajectory();
+
+
+    setDirectorRunningState(
+        true
+    );
+
+
+    setDirectorStatus(
+        "Program planning...",
+        "running"
+    );
+
+
+    directorProgress.textContent =
+        "Planning...";
+
+
+    statusText.textContent =
+        "Director trajectory hesaplanıyor...";
+
+
+    try {
+
+        // ====================================================
+        // REQUEST DIRECTOR PLAN
+        // ====================================================
+
+        const data =
+            await apiRequest(
+                "/api/director/plan",
+                {
+
+                    method:
+                        "POST",
+
+                    headers: {
+
+                        "Content-Type":
+                            "application/json"
+
+                    },
+
+                    body:
+                        JSON.stringify({
+
+                            dh_table:
+                                currentDHTable,
+
+                            values:
+                                currentRobotValues,
+
+                            commands:
+                                buildDirectorCommands(),
+
+                            linear_step_mm:
+                                5,
+
+                            rotation_step_deg:
+                                2,
+
+                            revolute_step_deg:
+                                2,
+
+                            prismatic_step_mm:
+                                5
+
+                        })
+
+                },
+                1
+            );
+
+
+        // ====================================================
+        // PLANNER ERROR
+        // ====================================================
+
+        if (
+            !data?.success
+        ) {
+
+            setDirectorRunningState(
+                false
+            );
+
+
+            directorProgress.textContent =
+                "Validation failed";
+
+
+            showDirectorError(
+                data
+            );
+
+
+            return;
+        }
+
+
+        // ====================================================
+        // TRAJECTORY CHECK
+        // ====================================================
+
+        if (
+            !Array.isArray(
+                data.trajectory
+            )
+            ||
+            data.trajectory.length === 0
+        ) {
+
+            throw new Error(
+                "Backend trajectory üretmedi."
+            );
+        }
+
+
+        // ====================================================
+        // EXTRACT TCP PATH FROM TRAJECTORY
+        // ====================================================
+
+        const tcpPath =
+            data.trajectory
+                .map(
+                    point =>
+                        point.tcp
+                )
+                .filter(
+
+                    tcp =>
+                        Array.isArray(
+                            tcp
+                        )
+                        &&
+                        tcp.length >= 3
+
+                );
+
+
+        console.log(
+            "Director TCP Path:",
+            tcpPath
+        );
+
+
+        // ====================================================
+        // TRAJECTORY CHECK
+        // ====================================================
+
+        if (
+            tcpPath.length < 2
+        ) {
+
+            console.warn(
+                "Trajectory çizmek için yeterli TCP noktası yok.",
+                tcpPath
+            );
+
+        }
+
+        else {
+
+            // ================================================
+            // CREATE TRAJECTORY LINE
+            // ================================================
+
+            createDirectorTrajectory(
+                tcpPath
+            );
+
+        }
+
+
+        // ====================================================
+        // START ANIMATION
+        // ====================================================
+
+        startDirectorAnimation(
+            data.trajectory
+        );
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Director error:",
+            error
+        );
+
+
+        setDirectorRunningState(
+            false
+        );
+
+
+        setDirectorStatus(
+            error.message,
+            "error"
+        );
+
+
+        directorProgress.textContent =
+            "Error";
+
+
+        statusText.textContent =
+            "Director hatası";
+    }
+}
+
+
+
+// ============================================================
+// UPDATE TRAJECTORY TRACE
+// ============================================================
+
+function updateDirectorTrajectoryTrace(
+    pointCount
+) {
+
+    if (
+        !directorTrajectoryLine
+    ) {
+
+        return;
+    }
+
+
+    const totalPoints =
+        directorTrajectoryLine
+            .geometry
+            .attributes
+            .position
+            .count;
+
+
+    const visiblePoints =
+        Math.min(
+
+            totalPoints,
+
+            Math.max(
+                2,
+                pointCount
+            )
+
+        );
+
+
+    directorTrajectoryLine
+        .geometry
+        .setDrawRange(
+            0,
+            visiblePoints
+        );
+}
 // ============================================================
 // DISPOSE THREE OBJECT
 // ============================================================
@@ -1626,6 +3353,831 @@ function createLink(
     return cylinder;
 }
 
+// ============================================================
+// GET FRAME Z AXIS
+//
+// Standard DH:
+// Joint i hareket ekseni z_(i-1)
+//
+// Yani joint görselleştirmesinde parent frame'in
+// lokal Z eksenini kullanıyoruz.
+// ============================================================
+
+function getFrameZAxis(
+    frame
+) {
+
+    const R =
+        frame.rotation;
+
+
+    return new THREE.Vector3(
+
+        R[0][2],
+
+        R[1][2],
+
+        R[2][2]
+
+    ).normalize();
+}
+
+
+// ============================================================
+// GET JOINT NAME FROM DH ROW
+// ============================================================
+
+function getJointNameFromDHRow(
+    dhRow
+) {
+
+    const text = [
+
+        dhRow.theta ?? "0",
+
+        dhRow.d ?? "0",
+
+        dhRow.a ?? "0",
+
+        dhRow.alpha ?? "0"
+
+    ].join(" ");
+
+
+    const match =
+        text.match(
+            /\bq\d+\b/
+        );
+
+
+    return match
+        ? match[0]
+        : null;
+}
+
+
+// ============================================================
+// EVALUATE DH EXPRESSION
+//
+// Örnek:
+//
+// q1
+// q1 + L0
+// L0 + q1
+// q1 + L3
+// 2*q1 + L0
+//
+// gibi ifadeleri sayısal olarak çözer.
+// ============================================================
+
+function evaluateDHExpression(
+    expression,
+    overrideValues = {}
+) {
+
+    let numericExpression =
+        String(
+            expression ?? "0"
+        );
+
+
+    const values = {
+
+        ...currentRobotValues,
+
+        ...overrideValues
+
+    };
+
+
+    const names =
+        Object.keys(
+            values
+        ).sort(
+
+            (a, b) =>
+                b.length - a.length
+
+        );
+
+
+    for (
+        const name
+        of names
+    ) {
+
+        const value =
+            Number(
+                values[name]
+            );
+
+
+        if (
+            !Number.isFinite(
+                value
+            )
+        ) {
+
+            continue;
+        }
+
+
+        numericExpression =
+            numericExpression.replace(
+
+                new RegExp(
+                    `\\b${name}\\b`,
+                    "g"
+                ),
+
+                `(${value})`
+
+            );
+    }
+
+
+    // Sadece matematiksel ifadeye izin ver
+    if (
+        !/^[0-9eE+\-*/().\s]+$/.test(
+            numericExpression
+        )
+    ) {
+
+        console.warn(
+
+            "DH ifadesi çözülemedi:",
+
+            expression,
+
+            "->",
+
+            numericExpression
+
+        );
+
+
+        return null;
+    }
+
+
+    try {
+
+        const result =
+            Function(
+
+                `"use strict"; ` +
+                `return (${numericExpression});`
+
+            )();
+
+
+        if (
+            Number.isFinite(
+                result
+            )
+        ) {
+
+            return Number(
+                result
+            );
+        }
+
+    }
+
+    catch (error) {
+
+        console.warn(
+
+            "DH expression error:",
+
+            expression,
+
+            error
+
+        );
+    }
+
+
+    return null;
+}
+
+
+// ============================================================
+// PRISMATIC DISTANCE
+//
+// Kritik nokta:
+//
+// d = q1
+//       -> q1
+//
+// d = q1 + L0
+//       -> L0 + q1
+//
+// Dolayısıyla sabit offset kaybolmuyor.
+// ============================================================
+
+function getPrismaticDistance(
+    dhRow,
+    jointName,
+    qValue
+) {
+
+    const result =
+        evaluateDHExpression(
+
+            dhRow.d,
+
+            {
+
+                [jointName]:
+                    qValue
+
+            }
+
+        );
+
+
+    if (
+        result !== null
+    ) {
+
+        return result;
+    }
+
+
+    // Fallback
+    return Number(
+        qValue
+    ) || 0;
+}
+
+// ============================================================
+// PRISMATIC VISUAL STATE
+//
+// Örnek:
+//
+// d = L0 + q1
+//
+// dMin     = L0 + qMin
+// dCurrent = L0 + qCurrent
+// dMax     = L0 + qMax
+//
+// Sabit fiziksel gövde:
+//      dMin
+//
+// Güncel stroke:
+//      dCurrent - dMin
+//
+// Maksimum stroke:
+//      dMax - dMin
+// ============================================================
+
+function getPrismaticVisualState(
+    dhRow,
+    jointName,
+    qCurrent
+) {
+
+    const qMin =
+        Number.isFinite(
+            Number(
+                dhRow.min
+            )
+        )
+            ? Number(
+                dhRow.min
+            )
+            : 0;
+
+
+    const qMax =
+        Number.isFinite(
+            Number(
+                dhRow.max
+            )
+        )
+            ? Number(
+                dhRow.max
+            )
+            : qCurrent;
+
+
+    const dMin =
+        getPrismaticDistance(
+
+            dhRow,
+
+            jointName,
+
+            qMin
+
+        );
+
+
+    const dCurrent =
+        getPrismaticDistance(
+
+            dhRow,
+
+            jointName,
+
+            qCurrent
+
+        );
+
+
+    const dMax =
+        getPrismaticDistance(
+
+            dhRow,
+
+            jointName,
+
+            qMax
+
+        );
+
+
+    return {
+
+        qMin,
+
+        qMax,
+
+        dMin,
+
+        dCurrent,
+
+        dMax,
+
+        currentStroke:
+            dCurrent - dMin,
+
+        maxStroke:
+            dMax - dMin
+
+    };
+}
+
+
+// ============================================================
+// CREATE BOX BETWEEN TWO POINTS
+//
+// Prizmatik gövde ve teleskopik stroke için ortak helper.
+// ============================================================
+
+function createBoxBetweenPoints(
+    startPoint,
+    endPoint,
+    thickness,
+    materialOptions = {}
+) {
+
+    const start =
+        startPoint.clone();
+
+
+    const end =
+        endPoint.clone();
+
+
+    const direction =
+        new THREE.Vector3()
+            .subVectors(
+                end,
+                start
+            );
+
+
+    const length =
+        direction.length();
+
+
+    if (
+        length < 0.001
+    ) {
+
+        return null;
+    }
+
+
+    const midpoint =
+        new THREE.Vector3()
+            .addVectors(
+                start,
+                end
+            )
+            .multiplyScalar(
+                0.5
+            );
+
+
+    const geometry =
+        new THREE.BoxGeometry(
+
+            thickness,
+
+            length,
+
+            thickness
+
+        );
+
+
+    const material =
+        new THREE.MeshStandardMaterial({
+
+            color:
+                0x5d5d5d,
+
+            metalness:
+                0.30,
+
+            roughness:
+                0.5,
+
+            ...materialOptions
+
+        });
+
+
+    const body =
+        new THREE.Mesh(
+
+            geometry,
+
+            material
+
+        );
+
+
+    body.position.copy(
+        midpoint
+    );
+
+
+    // BoxGeometry'nin uzun ekseni Y.
+    // Bunu gerçek eksene çevir.
+    body.quaternion
+        .setFromUnitVectors(
+
+            new THREE.Vector3(
+                0,
+                1,
+                0
+            ),
+
+            direction
+                .clone()
+                .normalize()
+
+        );
+
+
+    return body;
+}
+
+
+// ============================================================
+// CREATE PRISMATIC FIXED BODY
+//
+// KRİTİK:
+//
+// Fiziksel minimum link uzunluğu:
+//
+//      d(qMin)
+//
+// Örn:
+//
+//      d = L0 + q1
+//
+// ise:
+//
+//      physicalLength = L0 + q1_min
+//
+// qMax burada kullanılmaz.
+// ============================================================
+
+function createPrismaticFixedBody(
+    parentFrame,
+    dhRow,
+    jointName,
+    qCurrent,
+    thickness = 26
+) {
+
+    const state =
+        getPrismaticVisualState(
+
+            dhRow,
+
+            jointName,
+
+            qCurrent
+
+        );
+
+
+    const parentPosition =
+        new THREE.Vector3(
+            ...parentFrame.position
+        );
+
+
+    const axis =
+        getFrameZAxis(
+            parentFrame
+        );
+
+
+    const bodyEnd =
+        parentPosition
+            .clone()
+            .add(
+
+                axis
+                    .clone()
+                    .multiplyScalar(
+                        state.dMin
+                    )
+
+            );
+
+
+    return createBoxBetweenPoints(
+
+        parentPosition,
+
+        bodyEnd,
+
+        thickness,
+
+        {
+
+            color:
+                0x555555
+
+        }
+
+    );
+}
+
+
+// ============================================================
+// CREATE PRISMATIC EXTENSION
+//
+// Yalnızca:
+//
+//      dCurrent - dMin
+//
+// kadar uzar.
+//
+// q = qMin olduğunda görünmez.
+//
+// q arttıkça sabit gövdenin ucundan çıkar.
+// ============================================================
+
+function createPrismaticExtension(
+    parentFrame,
+    dhRow,
+    jointName,
+    qCurrent,
+    thickness = 16
+) {
+
+    const state =
+        getPrismaticVisualState(
+
+            dhRow,
+
+            jointName,
+
+            qCurrent
+
+        );
+
+
+    const parentPosition =
+        new THREE.Vector3(
+            ...parentFrame.position
+        );
+
+
+    const axis =
+        getFrameZAxis(
+            parentFrame
+        );
+
+
+    // Sabit gövdenin bittiği nokta
+    const minimumPoint =
+        parentPosition
+            .clone()
+            .add(
+
+                axis
+                    .clone()
+                    .multiplyScalar(
+                        state.dMin
+                    )
+
+            );
+
+
+    // Güncel slider/frame noktası
+    const currentPoint =
+        parentPosition
+            .clone()
+            .add(
+
+                axis
+                    .clone()
+                    .multiplyScalar(
+                        state.dCurrent
+                    )
+
+            );
+
+
+    return createBoxBetweenPoints(
+
+        minimumPoint,
+
+        currentPoint,
+
+        thickness,
+
+        {
+
+            color:
+                0x858585
+
+        }
+
+    );
+}
+
+
+// ============================================================
+// GET PRISMATIC SLIDER POSITION
+// ============================================================
+
+function getPrismaticSliderPosition(
+    parentFrame,
+    dhRow,
+    jointName,
+    qCurrent
+) {
+
+    const parentPosition =
+        new THREE.Vector3(
+            ...parentFrame.position
+        );
+
+
+    const axis =
+        getFrameZAxis(
+            parentFrame
+        );
+
+
+    const distance =
+        getPrismaticDistance(
+
+            dhRow,
+
+            jointName,
+
+            qCurrent
+
+        );
+
+
+    return parentPosition
+        .clone()
+        .add(
+
+            axis
+                .clone()
+                .multiplyScalar(
+                    distance
+                )
+
+        );
+}
+
+
+// ============================================================
+// CREATE PRISMATIC SLIDER
+// ============================================================
+
+function createPrismaticSlider(
+    parentFrame,
+    dhRow,
+    jointName,
+    qCurrent,
+    size = 34
+) {
+
+    const position =
+        getPrismaticSliderPosition(
+
+            parentFrame,
+
+            dhRow,
+
+            jointName,
+
+            qCurrent
+
+        );
+
+
+    const geometry =
+        new THREE.BoxGeometry(
+
+            size,
+
+            size,
+
+            size
+
+        );
+
+
+    const material =
+        new THREE.MeshStandardMaterial({
+
+            color:
+                0xd8d8d8,
+
+            metalness:
+                0.15,
+
+            roughness:
+                0.5
+
+        });
+
+
+    const slider =
+        new THREE.Mesh(
+
+            geometry,
+
+            material
+
+        );
+
+
+    slider.position.copy(
+        position
+    );
+
+
+    // Parent frame orientation'ıyla hizala
+
+    const R =
+        parentFrame.rotation;
+
+
+    const matrix =
+        new THREE.Matrix4();
+
+
+    matrix.set(
+
+        R[0][0],
+        R[0][1],
+        R[0][2],
+        0,
+
+        R[1][0],
+        R[1][1],
+        R[1][2],
+        0,
+
+        R[2][0],
+        R[2][1],
+        R[2][2],
+        0,
+
+        0,
+        0,
+        0,
+        1
+
+    );
+
+
+    slider.setRotationFromMatrix(
+        matrix
+    );
+
+
+    return slider;
+}
+
 
 // ============================================================
 // FRAME AXES
@@ -1640,9 +4192,13 @@ function createFrameAxes(
 
 
     group.position.set(
+
         frame.position[0],
+
         frame.position[1],
+
         frame.position[2]
+
     );
 
 
@@ -1698,7 +4254,109 @@ function createFrameAxes(
 
 
 // ============================================================
+// CREATE REVOLUTE JOINT
+//
+// Silindirin merkez ekseni = gerçek revolute ekseni.
+// ============================================================
+
+function createRevoluteJoint(
+    parentFrame,
+    radius = 18,
+    height = 34
+) {
+
+    const geometry =
+        new THREE.CylinderGeometry(
+
+            radius,
+
+            radius,
+
+            height,
+
+            24
+
+        );
+
+
+    const material =
+        new THREE.MeshStandardMaterial({
+
+            color:
+                0xd8d8d8,
+
+            metalness:
+                0.15,
+
+            roughness:
+                0.5
+
+        });
+
+
+    const joint =
+        new THREE.Mesh(
+
+            geometry,
+
+            material
+
+        );
+
+
+    joint.position.set(
+        ...parentFrame.position
+    );
+
+
+    const axis =
+        getFrameZAxis(
+            parentFrame
+        );
+
+
+    // Three.js Cylinder uzun ekseni Y.
+    //
+    // Y -> joint Z axis
+
+    joint.quaternion
+        .setFromUnitVectors(
+
+            new THREE.Vector3(
+                0,
+                1,
+                0
+            ),
+
+            axis
+
+        );
+
+
+    return joint;
+}
+
+
+// ============================================================
 // DRAW ROBOT
+//
+// REVOLUTE:
+//
+// parentFrame
+//      ◎──────────── childFrame
+//
+// PRISMATIC:
+//
+// parent
+//   │
+//   ████████████████░░░░░■
+//   |<--- dMin ---->|     ↑
+//         sabit         slider
+//
+//   ░ kısmı:
+//      dCurrent - dMin
+//
+// qMin/qMax link boyu olarak kullanılmaz.
 // ============================================================
 
 function drawRobot(
@@ -1709,6 +4367,8 @@ function drawRobot(
         !Array.isArray(
             frames
         )
+        ||
+        frames.length === 0
     ) {
 
         return;
@@ -1723,7 +4383,7 @@ function drawRobot(
 
 
     // ========================================================
-    // LINKS
+    // EACH DH ROW
     // ========================================================
 
     for (
@@ -1732,12 +4392,244 @@ function drawRobot(
         i++
     ) {
 
+        const parentFrame =
+            frames[i];
+
+
+        const childFrame =
+            frames[
+                i + 1
+            ];
+
+
+        const dhRow =
+            currentDHTable[i];
+
+
+        if (
+            !dhRow
+        ) {
+
+            continue;
+        }
+
+
+        // ====================================================
+        // PRISMATIC
+        // ====================================================
+
+        if (
+            dhRow.type === "P"
+        ) {
+
+            const jointName =
+                getJointNameFromDHRow(
+                    dhRow
+                );
+
+
+            if (
+                !jointName
+            ) {
+
+                console.warn(
+
+                    "Prismatic q sembolü bulunamadı:",
+
+                    dhRow
+
+                );
+
+
+                continue;
+            }
+
+
+            const qCurrent =
+                Number(
+
+                    currentRobotValues[
+                        jointName
+                    ]
+                    ??
+                    0
+
+                );
+
+
+            // =================================================
+            // 1) FIXED PHYSICAL BODY
+            //
+            // Uzunluğu:
+            //
+            //      d(qMin)
+            //
+            // Örnek:
+            //
+            //      L0 + qMin
+            // =================================================
+
+            const fixedBody =
+                createPrismaticFixedBody(
+
+                    parentFrame,
+
+                    dhRow,
+
+                    jointName,
+
+                    qCurrent
+
+                );
+
+
+            if (
+                fixedBody
+            ) {
+
+                robotGroup.add(
+                    fixedBody
+                );
+            }
+
+
+            // =================================================
+            // 2) TELESCOPIC EXTENSION
+            //
+            // Uzunluğu:
+            //
+            //      dCurrent - dMin
+            // =================================================
+
+            const extension =
+                createPrismaticExtension(
+
+                    parentFrame,
+
+                    dhRow,
+
+                    jointName,
+
+                    qCurrent
+
+                );
+
+
+            if (
+                extension
+            ) {
+
+                robotGroup.add(
+                    extension
+                );
+            }
+
+
+            // =================================================
+            // 3) MOVING PRISMATIC CUBE / CARRIAGE
+            // =================================================
+
+            const slider =
+                createPrismaticSlider(
+
+                    parentFrame,
+
+                    dhRow,
+
+                    jointName,
+
+                    qCurrent
+
+                );
+
+
+            robotGroup.add(
+                slider
+            );
+
+
+            // =================================================
+            // 4) CURRENT PRISMATIC POSITION
+            // =================================================
+
+            const sliderPosition =
+                getPrismaticSliderPosition(
+
+                    parentFrame,
+
+                    dhRow,
+
+                    jointName,
+
+                    qCurrent
+
+                );
+
+
+            // =================================================
+            // 5) DH "a" OFFSET AFTER PRISMATIC MOTION
+            //
+            // Eğer a != 0 ise gerçek child frame,
+            // slider noktasından yana kaymıştır.
+            //
+            // Bu sabit linktir.
+            // =================================================
+
+            const rigidLink =
+                createLink(
+
+                    sliderPosition.toArray(),
+
+                    childFrame.position
+
+                );
+
+
+            if (
+                rigidLink
+            ) {
+
+                robotGroup.add(
+                    rigidLink
+                );
+            }
+
+
+            // Prismatic için normal parent-child link yok.
+            continue;
+        }
+
+
+        // ====================================================
+        // REVOLUTE
+        // ====================================================
+
+        if (
+            dhRow.type === "R"
+        ) {
+
+            const revoluteJoint =
+                createRevoluteJoint(
+                    parentFrame
+                );
+
+
+            robotGroup.add(
+                revoluteJoint
+            );
+        }
+
+
+        // ====================================================
+        // NORMAL RIGID LINK
+        // ====================================================
+
         const link =
             createLink(
 
-                frames[i].position,
+                parentFrame.position,
 
-                frames[i + 1].position
+                childFrame.position
 
             );
 
@@ -1754,40 +4646,13 @@ function drawRobot(
 
 
     // ========================================================
-    // JOINTS + FRAMES
+    // FRAME AXES
     // ========================================================
 
     for (
         const frame
         of frames
     ) {
-
-        const joint =
-            new THREE.Mesh(
-
-                new THREE.SphereGeometry(
-                    17,
-                    20,
-                    20
-                ),
-
-                new THREE.MeshStandardMaterial({
-                    color:
-                        0xd8d8d8
-                })
-
-            );
-
-
-        joint.position.set(
-            ...frame.position
-        );
-
-
-        robotGroup.add(
-            joint
-        );
-
 
         robotGroup.add(
 
@@ -1799,10 +4664,8 @@ function drawRobot(
     }
 
 
-    // Kamera burada değiştirilmez.
+    // Kamera burada resetlenmez.
 }
-
-
 // ============================================================
 // REFRAME VIEWER
 // ============================================================
@@ -1869,7 +4732,9 @@ function reframeViewer(
 
 
     const distance =
-        maxSize * 2.2;
+        maxSize
+        *
+        2.2;
 
 
     camera.position.set(
@@ -2108,8 +4973,11 @@ function buildJointJogPanel() {
 
 
         const unit =
+
             joint.type === "R"
+
                 ? "°"
+
                 : "mm";
 
 
@@ -2156,12 +5024,6 @@ function buildJointJogPanel() {
 
 // ============================================================
 // UPDATE JOINT DISPLAY
-//
-// Burada önceki kodda .value kullanılıyordu.
-//
-// Ancak joint-current artık INPUT değil SPAN.
-//
-// Bu nedenle textContent kullanıyoruz.
 // ============================================================
 
 function updateJointJogValues(
@@ -2192,6 +5054,7 @@ function updateJointJogValues(
 
 
             display.textContent =
+
                 `${Number(value).toFixed(2)} ${unit}`;
 
         }
@@ -2212,7 +5075,7 @@ async function performLinearJog(
         !robotBuilt
     ) {
 
-        return;
+        return false;
     }
 
 
@@ -2234,12 +5097,15 @@ async function performLinearJog(
         step <= 0
     ) {
 
+        stopHoldJog();
+
+
         alert(
             "Geçerli bir Linear Jog step değeri gir."
         );
 
 
-        return;
+        return false;
     }
 
 
@@ -2292,13 +5158,19 @@ async function performLinearJog(
             !data.success
         ) {
 
+            stopHoldJog();
+
+
             statusText.textContent =
-                `Jog başarısız — hata ${Number(
+
+                `Jog başarısız — hata ` +
+
+                `${Number(
                     data.position_error
                 ).toFixed(2)} mm`;
 
 
-            return;
+            return false;
         }
 
 
@@ -2339,6 +5211,9 @@ async function performLinearJog(
 
             `${Number(data.distance).toFixed(2)} mm`;
 
+
+        return true;
+
     }
 
     catch (error) {
@@ -2348,6 +5223,9 @@ async function performLinearJog(
         );
 
 
+        stopHoldJog();
+
+
         statusText.textContent =
             "Linear Jog hatası";
 
@@ -2355,6 +5233,9 @@ async function performLinearJog(
         alert(
             error.message
         );
+
+
+        return false;
     }
 }
 
@@ -2372,7 +5253,7 @@ async function performJointJog(
         !robotBuilt
     ) {
 
-        return;
+        return false;
     }
 
 
@@ -2406,12 +5287,15 @@ async function performJointJog(
         )
     ) {
 
+        stopHoldJog();
+
+
         alert(
             "Geçerli Joint Jog step değerleri gir."
         );
 
 
-        return;
+        return false;
     }
 
 
@@ -2495,6 +5379,9 @@ async function performJointJog(
         statusText.textContent =
             `${jointName} jog`;
 
+
+        return true;
+
     }
 
     catch (error) {
@@ -2504,6 +5391,9 @@ async function performJointJog(
         );
 
 
+        stopHoldJog();
+
+
         statusText.textContent =
             "Joint Jog hatası";
 
@@ -2511,24 +5401,45 @@ async function performJointJog(
         alert(
             error.message
         );
+
+
+        return false;
     }
 }
 
+
 // ============================================================
 // HOLD TO JOG
+//
+// Aynı anda yalnızca bir backend request çalışır.
+//
+// Akış:
+//
+// pointerdown
+//      ↓
+// jog
+//      ↓
+// cevap bekle
+//      ↓
+// hala basılı mı?
+//      ↓
+// sonraki jog
+//
+// Böylece Render'a üst üste request yığılmaz.
 // ============================================================
 
-let jogHoldActive = false;
+let jogHoldActive =
+    false;
 
-let jogHoldToken = 0;
+
+let jogHoldToken =
+    0;
 
 
-// Basılı tutmaya başla
 async function startHoldJog(
     jogFunction
 ) {
 
-    // Başka bir hold devam ediyorsa iptal et
     stopHoldJog();
 
 
@@ -2536,22 +5447,29 @@ async function startHoldJog(
         true;
 
 
-    // Her yeni hold için yeni token
     const myToken =
         ++jogHoldToken;
 
 
     // ========================================================
-    // İLK JOG
-    //
-    // Butona basıldığı anda hareket etsin.
+    // FIRST STEP IMMEDIATELY
     // ========================================================
 
-    await jogFunction();
+    const firstSuccess =
+        await jogFunction();
 
 
-    // İlk tek tıklamayla uzun basışı ayırmak için
-    // ufak bir bekleme
+    if (
+        !firstSuccess
+    ) {
+
+        stopHoldJog();
+
+        return;
+    }
+
+
+    // Tek tık ile hold arasında küçük gecikme
     await sleep(
         120
     );
@@ -2567,19 +5485,22 @@ async function startHoldJog(
         myToken === jogHoldToken
     ) {
 
-        /*
-            KRİTİK:
-
-            await kullandığımız için önceki API request
-            bitmeden yeni request gönderilmiyor.
-
-            Bu yüzden backend request kuyruğu oluşmaz.
-        */
-
-        await jogFunction();
+        const success =
+            await jogFunction();
 
 
-        // Çok agresif request göndermeyelim
+        if (
+            !success
+        ) {
+
+            stopHoldJog();
+
+            break;
+        }
+
+
+        // Backend'i gereksiz dövmemek için
+        // kısa bekleme
         await sleep(
             40
         );
@@ -2587,20 +5508,14 @@ async function startHoldJog(
 }
 
 
-// Basılı tutmayı bırak
 function stopHoldJog() {
 
     jogHoldActive =
         false;
 
 
-    // Eski loop'un geçersiz kalmasını sağlar
     jogHoldToken++;
 }
-
-// ============================================================
-// JOINT BUTTON BIND
-// ============================================================
 
 
 // ============================================================
@@ -2610,7 +5525,7 @@ function stopHoldJog() {
 function bindJointJogButtons() {
 
     // ========================================================
-    // JOINT -
+    // JOINT MINUS
     // ========================================================
 
     document
@@ -2669,7 +5584,7 @@ function bindJointJogButtons() {
 
 
     // ========================================================
-    // JOINT +
+    // JOINT PLUS
     // ========================================================
 
     document
@@ -2727,31 +5642,83 @@ function bindJointJogButtons() {
         );
 }
 
+
 // ============================================================
 // LINEAR BUTTON EVENTS
 // ============================================================
 
 linearJogButtons.forEach(
-
     button => {
 
         button.addEventListener(
-            "click",
-            () => {
+            "pointerdown",
+            event => {
 
-                performLinearJog(
+                event.preventDefault();
 
-                    button.dataset.axis,
 
-                    Number(
-                        button.dataset.direction
-                    )
-
+                button.setPointerCapture(
+                    event.pointerId
                 );
+
+
+                startHoldJog(
+                    () =>
+                        performLinearJog(
+
+                            button.dataset.axis,
+
+                            Number(
+                                button.dataset.direction
+                            )
+
+                        )
+                );
+
             }
         );
-    }
 
+
+        button.addEventListener(
+            "pointerup",
+            stopHoldJog
+        );
+
+
+        button.addEventListener(
+            "pointercancel",
+            stopHoldJog
+        );
+
+
+        button.addEventListener(
+            "lostpointercapture",
+            stopHoldJog
+        );
+
+    }
+);
+
+
+// ============================================================
+// GLOBAL JOG STOP SAFETY
+// ============================================================
+
+window.addEventListener(
+    "pointerup",
+    stopHoldJog
+);
+
+
+window.addEventListener(
+    "pointercancel",
+    stopHoldJog
+);
+
+
+window.addEventListener(
+    "blur",
+    stopHoldJog
 );
 
 
@@ -2809,6 +5776,7 @@ async function loadPresetLibrary() {
 
 
             button.textContent =
+
                 preset.dof
 
                     ? `${preset.name} (${preset.dof} DOF)`
@@ -2819,6 +5787,9 @@ async function loadPresetLibrary() {
             button.addEventListener(
                 "click",
                 () => {
+
+                    stopHoldJog();
+
 
                     loadPreset(
                         preset.id
@@ -2862,6 +5833,15 @@ async function loadPreset(
     presetId
 ) {
 
+    stopHoldJog();
+
+
+    stopDirectorAnimation(
+        false
+    );
+
+
+    clearDirectorTrajectory();
     try {
 
         statusText.textContent =
@@ -2870,8 +5850,13 @@ async function loadPreset(
 
         const preset =
             await apiRequest(
-                `/api/presets/${encodeURIComponent(presetId)}`,
+
+                `/api/presets/${encodeURIComponent(
+                    presetId
+                )}`,
+
                 {},
+
                 2
             );
 
@@ -3031,6 +6016,9 @@ addRowButton.addEventListener(
     "click",
     async () => {
 
+        stopHoldJog();
+
+
         addDHRow();
 
 
@@ -3047,6 +6035,9 @@ addRowButton.addEventListener(
 removeRowButton.addEventListener(
     "click",
     async () => {
+
+        stopHoldJog();
+
 
         const rows =
             dhBody.querySelectorAll(
@@ -3076,7 +6067,13 @@ removeRowButton.addEventListener(
 
 buildButton.addEventListener(
     "click",
-    buildRobot
+    () => {
+
+        stopHoldJog();
+
+        buildRobot();
+
+    }
 );
 
 
@@ -3191,6 +6188,130 @@ async function createDemoRobot() {
     await refreshParameters();
 }
 
+// ============================================================
+// DIRECTOR EVENT BINDINGS
+// ============================================================
+
+// Builder tab
+builderTabButton.addEventListener(
+    "click",
+    () => {
+
+        setRightPanelMode(
+            "builder"
+        );
+
+    }
+);
+
+
+// Director tab
+directorTabButton.addEventListener(
+    "click",
+    () => {
+
+        setRightPanelMode(
+            "director"
+        );
+
+    }
+);
+
+
+// ============================================================
+// COMMAND BUTTONS
+// ============================================================
+
+directorCommandButtons.forEach(
+    button => {
+
+        button.addEventListener(
+            "click",
+            () => {
+
+                addDirectorCommand({
+
+                    type:
+                        button.dataset
+                            .directorCommand,
+
+                    axis:
+                        button.dataset.axis,
+
+                    label:
+                        button.dataset.label,
+
+                    unit:
+                        button.dataset.unit
+
+                });
+
+            }
+        );
+
+    }
+);
+
+
+// ============================================================
+// CLEAR
+// ============================================================
+
+directorClearButton.addEventListener(
+    "click",
+    clearDirectorProgram
+);
+
+
+// ============================================================
+// RUN
+// ============================================================
+
+directorRunButton.addEventListener(
+    "click",
+    runDirectorProgram
+);
+
+
+// ============================================================
+// STOP
+// ============================================================
+
+directorStopButton.addEventListener(
+    "click",
+    () => {
+
+        stopDirectorAnimation(
+            true
+        );
+
+    }
+);
+
+// ============================================================
+// RESET
+// ============================================================
+
+
+directorResetButton.addEventListener(
+    "click",
+    resetDirectorProgram
+);
+
+// ============================================================
+// SPEED
+// ============================================================
+
+directorSpeedInput.addEventListener(
+    "input",
+    () => {
+
+        directorSpeedValue.textContent =
+
+            `${directorSpeedInput.value}%`;
+
+    }
+);
 
 // ============================================================
 // START APPLICATION

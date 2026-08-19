@@ -91,10 +91,81 @@ button {
 
 
 /* =========================================================
+   MODE TABS
+   ========================================================= */
+
+#mode-tabs {
+    display: grid;
+
+    grid-template-columns:
+        1fr
+        1fr;
+
+    gap: 6px;
+
+    flex-shrink: 0;
+
+    margin-bottom: 10px;
+
+    padding-bottom: 10px;
+
+    border-bottom: 1px solid #444444;
+}
+
+
+.mode-tab {
+    min-height: 38px;
+
+    background: #303030;
+
+    border: 1px solid #555555;
+
+    color: #aaaaaa;
+
+    font-size: 13px;
+    font-weight: 600;
+}
+
+
+.mode-tab:hover:not(:disabled) {
+    background: #404040;
+}
+
+
+.mode-tab.active {
+    background: #505050;
+
+    color: #ffffff;
+
+    border-color: #777777;
+}
+
+
+/* =========================================================
+   RIGHT MODE CONTAINERS
+   ========================================================= */
+
+.right-mode {
+    display: none;
+
+    flex: 1;
+    flex-direction: column;
+
+    min-height: 0;
+}
+
+
+.right-mode.active {
+    display: flex;
+}
+
+
+/* =========================================================
    RIGHT PANEL SCROLL AREA
    ========================================================= */
 
-#right-content {
+#right-content,
+#director-content {
     flex: 1;
 
     min-height: 0;
@@ -107,10 +178,11 @@ button {
 
 
 /* =========================================================
-   BUILD ROBOT FIXED FOOTER
+   BUILDER / DIRECTOR FOOTERS
    ========================================================= */
 
-#build-footer {
+#build-footer,
+#director-footer {
     flex-shrink: 0;
 
     padding-top: 10px;
@@ -119,7 +191,18 @@ button {
 
     background: #222222;
 
-    border-top: 1px solid #444;
+    border-top: 1px solid #444444;
+}
+
+
+#director-footer {
+    display: grid;
+
+    grid-template-columns:
+        minmax(0, 1fr)
+        110px;
+
+    gap: 8px;
 }
 
 
@@ -541,13 +624,8 @@ button {
 }
 
 
-/*
-   app.js joint satırlarını bu class ile oluşturuyorsa
-   doğrudan ABB benzeri görünüm alır.
-*/
-
 /* =========================================================
-   JOINT JOG - FINAL LAYOUT
+   JOINT JOG LAYOUT
    ========================================================= */
 
 .joint-jog-row {
@@ -569,8 +647,6 @@ button {
 }
 
 
-/* q1 / q2 / q3 */
-
 .joint-jog-row .joint-name {
     width: 32px;
 
@@ -582,8 +658,6 @@ button {
     color: #eeeeee;
 }
 
-
-/* ORTADAKİ JOINT DEĞERİ */
 
 .joint-jog-row .joint-value {
     width: 100%;
@@ -598,7 +672,7 @@ button {
 
     background: #151515;
 
-    border: 1px solid #555;
+    border: 1px solid #555555;
     border-radius: 4px;
 
     font-family: monospace;
@@ -609,8 +683,6 @@ button {
     white-space: nowrap;
 }
 
-
-/* SOL / SAĞ OKLAR */
 
 .joint-jog-row .joint-minus,
 .joint-jog-row .joint-plus {
@@ -629,6 +701,7 @@ button {
 
     font-size: 16px;
 }
+
 
 /* =========================================================
    ROBOT LIBRARY
@@ -660,6 +733,331 @@ button {
 
 .preset-button:hover:not(:disabled) {
     background: #4a4a4a;
+}
+
+
+/* =========================================================
+   DIRECTOR SECTION HEADER
+   ========================================================= */
+
+.director-section-header {
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 10px;
+
+    margin-bottom: 10px;
+}
+
+
+.director-section-header h2 {
+    margin: 0;
+}
+
+
+.small-button {
+    padding:
+        4px
+        9px;
+
+    font-size: 12px;
+}
+
+
+/* =========================================================
+   DIRECTOR PROGRAM
+   ========================================================= */
+
+#director-program-list {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 7px;
+
+    min-height: 100px;
+
+    padding: 8px;
+
+    background: #191919;
+
+    border: 1px solid #444444;
+
+    border-radius: 5px;
+}
+
+
+#director-program-placeholder {
+    padding:
+        16px
+        8px;
+
+    color: #777777;
+
+    font-size: 13px;
+
+    text-align: center;
+
+    line-height: 1.5;
+}
+
+
+/* Program satırlarını app.js daha sonra oluşturacak */
+
+.director-program-row {
+    display: grid;
+
+    grid-template-columns:
+        26px
+        minmax(80px, 1fr)
+        90px
+        40px
+        34px;
+
+    align-items: center;
+
+    gap: 6px;
+
+    padding: 7px;
+
+    background: #272727;
+
+    border: 1px solid #444444;
+
+    border-radius: 4px;
+}
+
+
+.director-program-number {
+    color: #888888;
+
+    font-family: monospace;
+
+    font-size: 12px;
+
+    text-align: center;
+}
+
+
+.director-program-label {
+    font-size: 13px;
+
+    font-weight: 600;
+
+    color: #eeeeee;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+}
+
+
+.director-program-value {
+    min-width: 0;
+
+    width: 100%;
+
+    padding: 6px;
+
+    background: #151515;
+
+    border: 1px solid #555555;
+    border-radius: 3px;
+
+    color: #eeeeee;
+
+    text-align: right;
+}
+
+
+.director-program-value:focus {
+    outline: none;
+
+    border-color: #888888;
+}
+
+
+.director-program-unit {
+    font-size: 12px;
+
+    color: #999999;
+}
+
+
+.director-program-remove {
+    width: 34px;
+    height: 32px;
+
+    padding: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 16px;
+}
+
+
+/* =========================================================
+   DIRECTOR COMMAND LIBRARY
+   ========================================================= */
+
+.director-command-group {
+    display: grid;
+
+    grid-template-columns:
+        1fr
+        1fr
+        1fr;
+
+    gap: 6px;
+
+    margin-bottom: 12px;
+}
+
+
+.director-command-title {
+    grid-column:
+        1
+        /
+        -1;
+
+    margin-bottom: 2px;
+
+    color: #999999;
+
+    font-size: 12px;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.5px;
+}
+
+
+.director-command-button {
+    min-height: 38px;
+
+    padding:
+        7px
+        5px;
+
+    font-size: 12px;
+
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   DIRECTOR SPEED
+   ========================================================= */
+
+.director-speed-row {
+    display: grid;
+
+    grid-template-columns:
+        50px
+        minmax(0, 1fr)
+        55px;
+
+    align-items: center;
+
+    gap: 10px;
+}
+
+
+.director-speed-row label {
+    font-size: 13px;
+
+    color: #cccccc;
+}
+
+
+#director-speed {
+    width: 100%;
+}
+
+
+#director-speed-value {
+    font-family: monospace;
+
+    font-size: 13px;
+
+    text-align: right;
+
+    color: #eeeeee;
+}
+
+
+/* =========================================================
+   DIRECTOR STATUS
+   ========================================================= */
+
+.director-status {
+    padding: 10px;
+
+    border: 1px solid #444444;
+
+    border-radius: 4px;
+
+    background: #191919;
+
+    font-size: 13px;
+    font-weight: 600;
+}
+
+
+.director-status.ready {
+    color: #cccccc;
+}
+
+
+.director-status.running {
+    color: #ffffff;
+}
+
+
+.director-status.success {
+    color: #a8d8a8;
+}
+
+
+.director-status.error {
+    color: #ff9d9d;
+
+    border-color: #754444;
+
+    background: #2b1919;
+}
+
+
+#director-progress {
+    margin-top: 8px;
+
+    font-family: monospace;
+
+    font-size: 12px;
+
+    color: #888888;
+}
+
+
+/* =========================================================
+   DIRECTOR FOOTER BUTTONS
+   ========================================================= */
+
+.director-run-button {
+    width: 100%;
+}
+
+
+.director-stop-button {
+    width: 100%;
+
+    font-weight: 600;
 }
 
 
@@ -706,7 +1104,7 @@ button:disabled {
 
 
 /* =========================================================
-   BUILD ROBOT BUTTON
+   PRIMARY BUTTON
    ========================================================= */
 
 .primary-button {
@@ -725,7 +1123,8 @@ button:disabled {
    ========================================================= */
 
 #left-panel,
-#right-content {
+#right-content,
+#director-content {
     scrollbar-width: thin;
 
     scrollbar-color:
@@ -735,19 +1134,22 @@ button:disabled {
 
 
 #left-panel::-webkit-scrollbar,
-#right-content::-webkit-scrollbar {
+#right-content::-webkit-scrollbar,
+#director-content::-webkit-scrollbar {
     width: 8px;
 }
 
 
 #left-panel::-webkit-scrollbar-track,
-#right-content::-webkit-scrollbar-track {
+#right-content::-webkit-scrollbar-track,
+#director-content::-webkit-scrollbar-track {
     background: #222222;
 }
 
 
 #left-panel::-webkit-scrollbar-thumb,
-#right-content::-webkit-scrollbar-thumb {
+#right-content::-webkit-scrollbar-thumb,
+#director-content::-webkit-scrollbar-thumb {
     background: #555555;
 
     border-radius: 4px;
@@ -755,7 +1157,8 @@ button:disabled {
 
 
 #left-panel::-webkit-scrollbar-thumb:hover,
-#right-content::-webkit-scrollbar-thumb:hover {
+#right-content::-webkit-scrollbar-thumb:hover,
+#director-content::-webkit-scrollbar-thumb:hover {
     background: #666666;
 }
 
@@ -783,6 +1186,30 @@ button:disabled {
 
     #status {
         max-width: 180px;
+    }
+
+
+    .director-command-group {
+        grid-template-columns:
+            1fr;
+    }
+
+
+    .director-command-title {
+        grid-column:
+            1;
+    }
+
+
+    .director-program-row {
+        grid-template-columns:
+            24px
+            minmax(70px, 1fr)
+            70px
+            32px
+            30px;
+
+        gap: 4px;
     }
 
 }

@@ -215,6 +215,48 @@ async function readApiResponse(
 //
 // Geçici Render hatalarında birkaç kez tekrar dener.
 // ============================================================
+// ============================================================
+// HOLD-TO-JOG
+// ============================================================
+
+let jogHoldTimeout = null;
+let jogHoldInterval = null;
+
+function startHoldJog(jogFunction) {
+
+    // Önce tek jog hemen çalışsın
+    jogFunction();
+
+    // Kısa basış ile uzun basışı ayır
+    jogHoldTimeout = setTimeout(() => {
+
+        // Basılı tutuluyorsa sürekli jog
+        jogHoldInterval = setInterval(() => {
+
+            jogFunction();
+
+        }, 80);
+
+    }, 150);
+}
+
+
+function stopHoldJog() {
+
+    if (jogHoldTimeout !== null) {
+
+        clearTimeout(jogHoldTimeout);
+        jogHoldTimeout = null;
+
+    }
+
+    if (jogHoldInterval !== null) {
+
+        clearInterval(jogHoldInterval);
+        jogHoldInterval = null;
+
+    }
+}
 
 async function apiRequest(
     url,
@@ -2472,6 +2514,94 @@ async function performJointJog(
     }
 }
 
+// ============================================================
+// HOLD TO JOG
+// ============================================================
+
+let jogHoldActive = false;
+
+let jogHoldToken = 0;
+
+
+// Basılı tutmaya başla
+async function startHoldJog(
+    jogFunction
+) {
+
+    // Başka bir hold devam ediyorsa iptal et
+    stopHoldJog();
+
+
+    jogHoldActive =
+        true;
+
+
+    // Her yeni hold için yeni token
+    const myToken =
+        ++jogHoldToken;
+
+
+    // ========================================================
+    // İLK JOG
+    //
+    // Butona basıldığı anda hareket etsin.
+    // ========================================================
+
+    await jogFunction();
+
+
+    // İlk tek tıklamayla uzun basışı ayırmak için
+    // ufak bir bekleme
+    await sleep(
+        120
+    );
+
+
+    // ========================================================
+    // CONTINUOUS JOG
+    // ========================================================
+
+    while (
+        jogHoldActive
+        &&
+        myToken === jogHoldToken
+    ) {
+
+        /*
+            KRİTİK:
+
+            await kullandığımız için önceki API request
+            bitmeden yeni request gönderilmiyor.
+
+            Bu yüzden backend request kuyruğu oluşmaz.
+        */
+
+        await jogFunction();
+
+
+        // Çok agresif request göndermeyelim
+        await sleep(
+            40
+        );
+    }
+}
+
+
+// Basılı tutmayı bırak
+function stopHoldJog() {
+
+    jogHoldActive =
+        false;
+
+
+    // Eski loop'un geçersiz kalmasını sağlar
+    jogHoldToken++;
+}
+
+// ============================================================
+// JOINT BUTTON BIND
+// ============================================================
+
 
 // ============================================================
 // JOINT BUTTON BIND
@@ -2479,58 +2609,123 @@ async function performJointJog(
 
 function bindJointJogButtons() {
 
+    // ========================================================
+    // JOINT -
+    // ========================================================
+
     document
         .querySelectorAll(
             ".joint-minus"
         )
         .forEach(
-
             button => {
 
                 button.addEventListener(
-                    "click",
-                    () => {
+                    "pointerdown",
+                    event => {
 
-                        performJointJog(
+                        event.preventDefault();
 
-                            button.dataset.joint,
 
-                            -1
-
+                        button.setPointerCapture(
+                            event.pointerId
                         );
+
+
+                        startHoldJog(
+                            () =>
+                                performJointJog(
+
+                                    button.dataset.joint,
+
+                                    -1
+
+                                )
+                        );
+
                     }
                 );
-            }
 
+
+                button.addEventListener(
+                    "pointerup",
+                    stopHoldJog
+                );
+
+
+                button.addEventListener(
+                    "pointercancel",
+                    stopHoldJog
+                );
+
+
+                button.addEventListener(
+                    "lostpointercapture",
+                    stopHoldJog
+                );
+
+            }
         );
 
+
+    // ========================================================
+    // JOINT +
+    // ========================================================
 
     document
         .querySelectorAll(
             ".joint-plus"
         )
         .forEach(
-
             button => {
 
                 button.addEventListener(
-                    "click",
-                    () => {
+                    "pointerdown",
+                    event => {
 
-                        performJointJog(
+                        event.preventDefault();
 
-                            button.dataset.joint,
 
-                            1
-
+                        button.setPointerCapture(
+                            event.pointerId
                         );
+
+
+                        startHoldJog(
+                            () =>
+                                performJointJog(
+
+                                    button.dataset.joint,
+
+                                    1
+
+                                )
+                        );
+
                     }
                 );
-            }
 
+
+                button.addEventListener(
+                    "pointerup",
+                    stopHoldJog
+                );
+
+
+                button.addEventListener(
+                    "pointercancel",
+                    stopHoldJog
+                );
+
+
+                button.addEventListener(
+                    "lostpointercapture",
+                    stopHoldJog
+                );
+
+            }
         );
 }
-
 
 // ============================================================
 // LINEAR BUTTON EVENTS

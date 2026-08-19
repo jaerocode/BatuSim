@@ -1,6 +1,6 @@
 {
-  "id": "planar_3dof",
-  "name": "Planar RRR Robot",
+  "id": "rr_3d_robot",
+  "name": "3D RRR Robot",
   "category": "Preset",
   "readonly": true,
   "dof": 3,
@@ -8,9 +8,9 @@
   "dh_table": [
     {
       "theta": "q1",
-      "d": "0",
-      "a": "L1",
-      "alpha": "0",
+      "d": "L1",
+      "a": "0",
+      "alpha": "90",
       "type": "R",
       "min": -180,
       "max": 180
@@ -56,7 +56,7 @@
   },
 
   "metadata": {
-    "description": "3-DOF planar RRR robot preset",
+    "description": "3D-RRR-Robot preset",
     "source": "Built-in preset",
     "editable": true,
     "save_as_new_only": true

@@ -1641,6 +1641,181 @@ function clearDirectorTrajectory() {
 // CREATE DIRECTOR TRAJECTORY
 // ============================================================
 
+// ============================================================
+// RESET ROBOT TO HOME POSITION
+// ============================================================
+
+async function resetDirectorToHome() {
+
+    stopHoldJog();
+
+
+    stopDirectorAnimation(
+        false
+    );
+
+
+    clearDirectorTrajectory();
+
+
+    if (
+        !robotBuilt
+    ) {
+
+        setDirectorStatus(
+            "Önce robot oluştur.",
+            "error"
+        );
+
+
+        return;
+    }
+
+
+    try {
+
+        setDirectorStatus(
+            "Resetting to Home...",
+            "running"
+        );
+
+
+        statusText.textContent =
+            "Home Position yükleniyor...";
+
+
+        // ====================================================
+        // HOME + PARAMETERS
+        //
+        // Sağ paneldeki inputlardan okuyoruz.
+        //
+        // Bunların içinde:
+        // L0 L1 L2...
+        // q1 q2 q3...
+        //
+        // hepsi var.
+        // ====================================================
+
+        const homeValues =
+            readCurrentValues();
+
+
+        // ====================================================
+        // BUILD HOME CONFIGURATION
+        // ====================================================
+
+        const data =
+            await apiRequest(
+                "/api/build",
+                {
+
+                    method:
+                        "POST",
+
+                    headers: {
+
+                        "Content-Type":
+                            "application/json"
+
+                    },
+
+                    body:
+                        JSON.stringify({
+
+                            dh_table:
+                                currentDHTable,
+
+                            values:
+                                homeValues
+
+                        })
+
+                }
+            );
+
+
+        // ====================================================
+        // CURRENT STATE = HOME
+        // ====================================================
+
+        currentRobotValues = {
+            ...data.values
+        };
+
+
+        // ====================================================
+        // UPDATE VISUAL
+        // ====================================================
+
+        drawRobot(
+            data.frames
+        );
+
+
+        // ====================================================
+        // TCP
+        // ====================================================
+
+        updateTCP(
+            data.tcp.position
+        );
+
+
+        // ====================================================
+        // JOINT DISPLAY
+        // ====================================================
+
+        updateJointJogValues(
+            currentRobotValues
+        );
+
+
+        // ====================================================
+        // DIRECTOR STATE
+        // ====================================================
+
+        directorTrajectory =
+            [];
+
+
+        directorCurrentIndex =
+            0;
+
+
+        directorProgress.textContent =
+            "0 / 0";
+
+
+        setDirectorStatus(
+            "Home Position",
+            "success"
+        );
+
+
+        statusText.textContent =
+            "Robot Home Position'a döndü";
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Home reset error:",
+            error
+        );
+
+
+        setDirectorStatus(
+            "Reset Error",
+            "error"
+        );
+
+
+        statusText.textContent =
+            "Home reset hatası";
+    }
+}
+
 function createDirectorTrajectory(
     tcpPath
 ) {
@@ -6292,6 +6467,10 @@ directorStopButton.addEventListener(
 // RESET
 // ============================================================
 
+directorResetButton.addEventListener(
+    "click",
+    resetDirectorToHome
+);
 
 directorResetButton.addEventListener(
     "click",

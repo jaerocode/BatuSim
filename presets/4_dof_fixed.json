@@ -1,0 +1,73 @@
+{
+  "id": "4_dof_fixed_axis",
+  "name": "4-DOF Fixed Axis Robot",
+  "category": "Preset",
+  "readonly": true,
+  "dof": 4,
+
+  "dh_table": [
+    {
+      "theta": "q1",
+      "d": "L1",
+      "a": "0",
+      "alpha": "90",
+      "type": "R",
+      "min": -180,
+      "max": 180
+    },
+    {
+      "theta": "q2",
+      "d": "0",
+      "a": "L2",
+      "alpha": "0",
+      "type": "R",
+      "min": -180,
+      "max": 180
+    },
+    {
+      "theta": "q3",
+      "d": "0",
+      "a": "L3",
+      "alpha": "0",
+      "type": "R",
+      "min": -180,
+      "max": 180
+    },
+    {
+      "theta": "90",
+      "d": "0",
+      "a": "0",
+      "alpha": "90",
+      "type": "FIXED"
+    },
+    {
+      "theta": "q4",
+      "d": "0",
+      "a": "0",
+      "alpha": "0",
+      "type": "R",
+      "min": -180,
+      "max": 180
+    }
+  ],
+
+  "parameters": {
+    "L1": 100,
+    "L2": 100,
+    "L3": 75
+  },
+
+  "home": {
+    "q1": 0,
+    "q2": 20,
+    "q3": -20,
+    "q4": 0
+  },
+
+  "metadata": {
+    "description": "4-DOF serial robot with a fixed frame transformation before the final revolute joint",
+    "source": "Custom BatuSim preset",
+    "editable": true,
+    "save_as_new_only": true
+  }
+}

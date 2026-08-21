@@ -153,7 +153,6 @@
                     TCP
                 </h3>
 
-
                 <div>
                     X =
                     <span id="tcp-x">
@@ -162,7 +161,6 @@
                     mm
                 </div>
 
-
                 <div>
                     Y =
                     <span id="tcp-y">
@@ -170,7 +168,6 @@
                     </span>
                     mm
                 </div>
-
 
                 <div>
                     Z =
@@ -183,7 +180,6 @@
             </div>
 
         </section>
-
 
 
         <!-- ================================================== -->
@@ -257,7 +253,6 @@
         </section>
 
 
-
         <!-- ================================================== -->
         <!-- ROBOT LIBRARY -->
         <!-- ================================================== -->
@@ -283,7 +278,7 @@
 
 
     <!-- ================================================== -->
-    <!-- CENTER / 3D -->
+    <!-- CENTER / 3D VIEWER -->
     <!-- ================================================== -->
 
     <main id="viewer-panel">
@@ -347,9 +342,7 @@
                 class="mode-tab active"
                 type="button"
             >
-
                 Robot Builder
-
             </button>
 
 
@@ -358,9 +351,7 @@
                 class="mode-tab"
                 type="button"
             >
-
                 Director
-
             </button>
 
 
@@ -377,10 +368,6 @@
             class="right-mode active"
         >
 
-
-            <!-- ================================================== -->
-            <!-- EXISTING SCROLLABLE CONTENT -->
-            <!-- ================================================== -->
 
             <div id="right-content">
 
@@ -436,25 +423,17 @@
 
                     <div class="row-buttons">
 
-
                         <button id="add-row">
-
                             + Row
-
                         </button>
-
 
                         <button id="remove-row">
-
                             - Row
-
                         </button>
-
 
                     </div>
 
                 </section>
-
 
 
                 <!-- ================================================== -->
@@ -476,7 +455,6 @@
                     </div>
 
                 </section>
-
 
 
                 <!-- ================================================== -->
@@ -503,7 +481,6 @@
             </div>
 
 
-
             <!-- ================================================== -->
             <!-- BUILDER FOOTER -->
             <!-- ================================================== -->
@@ -515,9 +492,7 @@
                     id="build-button"
                     class="primary-button"
                 >
-
                     Build Robot
-
                 </button>
 
 
@@ -538,11 +513,64 @@
         >
 
 
-            <!-- ================================================== -->
-            <!-- DIRECTOR SCROLLABLE AREA -->
-            <!-- ================================================== -->
-
             <div id="director-content">
+
+
+                <!-- ================================================== -->
+                <!-- AI DIRECTOR -->
+                <!-- ================================================== -->
+
+                <section class="panel-section">
+
+                    <h2>
+                        AI Director
+                    </h2>
+
+
+                    <div id="ai-director-box">
+
+
+                        <textarea
+                            id="ai-director-input"
+                            rows="4"
+                            placeholder="Örn: XY düzleminde 100 mm kare çiz ve başlangıç konumuna geri dön"
+                        ></textarea>
+
+
+                        <div id="ai-director-actions">
+
+
+                            <button
+                                id="ai-generate-button"
+                                type="button"
+                            >
+                                Generate Program
+                            </button>
+
+
+                            <button
+                                id="ai-run-button"
+                                class="primary-button"
+                                type="button"
+                            >
+                                ▶ Generate & Run
+                            </button>
+
+
+                        </div>
+
+
+                        <div
+                            id="ai-director-status"
+                            class="ai-director-status"
+                        >
+                            Natural language command ready.
+                        </div>
+
+
+                    </div>
+
+                </section>
 
 
                 <!-- ================================================== -->
@@ -554,6 +582,7 @@
 
                     <div class="director-section-header">
 
+
                         <h2>
                             Program
                         </h2>
@@ -564,10 +593,9 @@
                             class="small-button"
                             type="button"
                         >
-
                             Clear
-
                         </button>
+
 
                     </div>
 
@@ -589,7 +617,6 @@
                 </section>
 
 
-
                 <!-- ================================================== -->
                 <!-- COMMAND LIBRARY -->
                 <!-- ================================================== -->
@@ -601,6 +628,10 @@
                         Commands
                     </h2>
 
+
+                    <!-- ================================================== -->
+                    <!-- LINEAR MOTION -->
+                    <!-- ================================================== -->
 
                     <div class="director-command-group">
 
@@ -620,9 +651,7 @@
                             data-label="Linear X"
                             data-unit="mm"
                         >
-
                             + Linear X
-
                         </button>
 
 
@@ -634,9 +663,7 @@
                             data-label="Linear Y"
                             data-unit="mm"
                         >
-
                             + Linear Y
-
                         </button>
 
 
@@ -648,15 +675,16 @@
                             data-label="Linear Z"
                             data-unit="mm"
                         >
-
                             + Linear Z
-
                         </button>
 
 
                     </div>
 
 
+                    <!-- ================================================== -->
+                    <!-- ORIENTATION -->
+                    <!-- ================================================== -->
 
                     <div class="director-command-group">
 
@@ -676,9 +704,7 @@
                             data-label="Roll"
                             data-unit="deg"
                         >
-
                             + Roll
-
                         </button>
 
 
@@ -690,9 +716,7 @@
                             data-label="Pitch"
                             data-unit="deg"
                         >
-
                             + Pitch
-
                         </button>
 
 
@@ -704,9 +728,7 @@
                             data-label="Yaw"
                             data-unit="deg"
                         >
-
                             + Yaw
-
                         </button>
 
 
@@ -714,7 +736,6 @@
 
 
                 </section>
-
 
 
                 <!-- ================================================== -->
@@ -744,14 +765,14 @@
                             type="range"
                             min="10"
                             max="200"
-                            value="30"
+                            value="50"
                             step="10"
                         >
 
 
                         <span id="director-speed-value">
 
-                            100%
+                            50%
 
                         </span>
 
@@ -762,9 +783,8 @@
                 </section>
 
 
-
                 <!-- ================================================== -->
-                <!-- DIRECTOR STATUS -->
+                <!-- PROGRAM STATUS -->
                 <!-- ================================================== -->
 
                 <section class="panel-section">
@@ -779,9 +799,7 @@
                         id="director-status"
                         class="director-status ready"
                     >
-
                         Ready
-
                     </div>
 
 
@@ -798,7 +816,6 @@
             </div>
 
 
-
             <!-- ================================================== -->
             <!-- DIRECTOR FOOTER -->
             <!-- ================================================== -->
@@ -811,9 +828,7 @@
                     class="primary-button director-run-button"
                     type="button"
                 >
-
                     ▶ Çalıştır
-
                 </button>
 
 
@@ -823,18 +838,16 @@
                     type="button"
                     disabled
                 >
-
                     ■ Stop
-
                 </button>
 
-                <button
-                    
-                    id="director-reset-button"
-                    type="button"
->
-                    ↺ Reset
 
+                <button
+                    id="director-reset-button"
+                    class="director-reset-button"
+                    type="button"
+                >
+                    ↺ Reset
                 </button>
 
 

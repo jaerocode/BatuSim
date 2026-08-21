@@ -1,0 +1,61 @@
+{
+  "id": "prr_planar_elevator",
+
+  "name": "PRR Elevator Robot",
+
+  "category": "Preset",
+
+  "readonly": true,
+
+  "dof": 3,
+
+  "dh_table": [
+    {
+      "theta": "0",
+      "d": "q1",
+      "a": "0",
+      "alpha": "0",
+      "type": "P",
+      "min": -1000,
+      "max": 1000
+    },
+
+    {
+      "theta": "q2",
+      "d": "0",
+      "a": "L2",
+      "alpha": "0",
+      "type": "R",
+      "min": -180,
+      "max": 180
+    },
+
+    {
+      "theta": "q3",
+      "d": "0",
+      "a": "L3",
+      "alpha": "0",
+      "type": "R",
+      "min": -180,
+      "max": 180
+    }
+  ],
+
+  "parameters": {
+    "L2": 100,
+    "L3": 100
+  },
+
+  "home": {
+    "q1": 0,
+    "q2": -45,
+    "q3": 90
+  },
+
+  "metadata": {
+    "description": "3-DOF PRR elevator robot preset",
+    "source": "Built-in preset",
+    "editable": true,
+    "save_as_new_only": true
+  }
+}

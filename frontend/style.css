@@ -1102,6 +1102,98 @@ button:disabled {
     cursor: default;
 }
 
+/* =========================================================
+   AI DIRECTOR
+   ========================================================= */
+
+#ai-director-box {
+    display: flex;
+    flex-direction: column;
+
+    gap: 8px;
+}
+
+
+#ai-director-input {
+    width: 100%;
+
+    min-height: 85px;
+
+    resize: vertical;
+
+    padding: 9px;
+
+    background: #151515;
+
+    color: #eeeeee;
+
+    border: 1px solid #555555;
+
+    border-radius: 4px;
+
+    font-family: inherit;
+
+    line-height: 1.4;
+}
+
+
+#ai-director-input:focus {
+    outline: none;
+
+    border-color: #888888;
+}
+
+
+#ai-director-actions {
+    display: grid;
+
+    grid-template-columns:
+        1fr
+        1fr;
+
+    gap: 7px;
+}
+
+
+#ai-director-actions button {
+    min-height: 38px;
+}
+
+
+.ai-director-status {
+    padding: 8px;
+
+    background: #191919;
+
+    border: 1px solid #444444;
+
+    border-radius: 4px;
+
+    color: #999999;
+
+    font-size: 12px;
+
+    line-height: 1.4;
+}
+
+
+.ai-director-status.running {
+    color: #ffffff;
+}
+
+
+.ai-director-status.success {
+    color: #a8d8a8;
+}
+
+
+.ai-director-status.error {
+    color: #ff9d9d;
+
+    border-color: #754444;
+
+    background: #2b1919;
+}
 
 /* =========================================================
    PRIMARY BUTTON

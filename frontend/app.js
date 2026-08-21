@@ -9,6 +9,33 @@ import {
 // DOM
 // ============================================================
 
+// ============================================================
+// AI DIRECTOR DOM
+// ============================================================
+
+const aiDirectorInput =
+    document.getElementById(
+        "ai-director-input"
+    );
+
+
+const aiGenerateButton =
+    document.getElementById(
+        "ai-generate-button"
+    );
+
+
+const aiRunButton =
+    document.getElementById(
+        "ai-run-button"
+    );
+
+
+const aiDirectorStatus =
+    document.getElementById(
+        "ai-director-status"
+    );
+
 const directorResetButton =
     document.getElementById(
         "director-reset-button"
@@ -2051,6 +2078,348 @@ function removeDirectorCommand(
     renderDirectorProgram();
 }
 
+function setAIDirectorStatus(
+    text,
+    state = ""
+) {
+
+    aiDirectorStatus.textContent =
+        text;
+
+
+    aiDirectorStatus.className =
+        `ai-director-status ${state}`;
+}
+
+async function interpretAICommand() {
+
+    const text =
+        aiDirectorInput.value.trim();
+
+
+    if (
+        !text
+    ) {
+
+        setAIDirectorStatus(
+            "Bir komut yaz.",
+            "error"
+        );
+
+        return;
+    }
+
+
+    try {
+
+        setAIDirectorStatus(
+            "Komut yorumlanıyor...",
+            "running"
+        );
+
+
+        const data =
+            await apiRequest(
+                "/api/tasks/interpret",
+                {
+
+                    method:
+                        "POST",
+
+                    headers: {
+
+                        "Content-Type":
+                            "application/json"
+
+                    },
+
+                    body:
+                        JSON.stringify({
+
+                            text:
+                                text
+
+                        })
+
+                }
+            );
+
+
+        console.log(
+            "AI Task IR:",
+            data.task_ir
+        );
+
+
+        const pretty =
+            JSON.stringify(
+                data.task_ir,
+                null,
+                2
+            );
+
+
+        setAIDirectorStatus(
+            `Understood: ${pretty}`,
+            "success"
+        );
+
+    }
+
+    catch (error) {
+
+        console.error(
+            error
+        );
+
+
+        setAIDirectorStatus(
+            error.message,
+            "error"
+        );
+    }
+}
+
+async function runAITask() {
+
+    if (
+        directorRunning
+    ) {
+
+        return;
+    }
+
+
+    if (
+        !robotBuilt
+    ) {
+
+        setAIDirectorStatus(
+            "Önce robot oluştur.",
+            "error"
+        );
+
+        return;
+    }
+
+
+    const text =
+        aiDirectorInput.value.trim();
+
+
+    if (
+        !text
+    ) {
+
+        setAIDirectorStatus(
+            "Bir komut yaz.",
+            "error"
+        );
+
+        return;
+    }
+
+
+    stopHoldJog();
+
+
+    clearDirectorTrajectory();
+
+
+    setDirectorRunningState(
+        true
+    );
+
+
+    setAIDirectorStatus(
+        "Robot programı oluşturuluyor...",
+        "running"
+    );
+
+
+    directorProgress.textContent =
+        "AI Planning...";
+
+
+    statusText.textContent =
+        "AI Director trajectory hesaplıyor...";
+
+
+    try {
+
+        const data =
+            await apiRequest(
+                "/api/tasks/plan",
+                {
+
+                    method:
+                        "POST",
+
+                    headers: {
+
+                        "Content-Type":
+                            "application/json"
+
+                    },
+
+                    body:
+                        JSON.stringify({
+
+                            dh_table:
+                                currentDHTable,
+
+                            values:
+                                currentRobotValues,
+
+                            text:
+                                text,
+
+                            linear_step_mm:
+                                5,
+
+                            rotation_step_deg:
+                                2,
+
+                            revolute_step_deg:
+                                2,
+
+                            prismatic_step_mm:
+                                5
+
+                        })
+
+                },
+                1
+            );
+
+
+        if (
+            !data?.success
+        ) {
+
+            setDirectorRunningState(
+                false
+            );
+
+
+            showDirectorError(
+                data
+            );
+
+
+            setAIDirectorStatus(
+                data.message
+                ??
+                "Robot programı oluşturulamadı.",
+                "error"
+            );
+
+
+            return;
+        }
+
+
+        if (
+            !Array.isArray(
+                data.trajectory
+            )
+            ||
+            data.trajectory.length === 0
+        ) {
+
+            throw new Error(
+                "AI Director trajectory üretmedi."
+            );
+        }
+
+
+        console.log(
+            "Task IR:",
+            data.task_ir
+        );
+
+
+        console.log(
+            "Generated program:",
+            data.generated_program
+        );
+
+
+        // ====================================================
+        // TCP PATH
+        // ====================================================
+
+        const tcpPath =
+            data.trajectory
+                .map(
+                    point =>
+                        point.tcp
+                )
+                .filter(
+
+                    tcp =>
+                        Array.isArray(
+                            tcp
+                        )
+                        &&
+                        tcp.length >= 3
+
+                );
+
+
+        if (
+            tcpPath.length >= 2
+        ) {
+
+            createDirectorTrajectory(
+                tcpPath
+            );
+        }
+
+
+        setAIDirectorStatus(
+            "Program understood and validated.",
+            "success"
+        );
+
+
+        // ====================================================
+        // ANIMATION
+        // ====================================================
+
+        startDirectorAnimation(
+            data.trajectory
+        );
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "AI Director error:",
+            error
+        );
+
+
+        setDirectorRunningState(
+            false
+        );
+
+
+        setAIDirectorStatus(
+            error.message,
+            "error"
+        );
+
+
+        directorProgress.textContent =
+            "Error";
+
+
+        statusText.textContent =
+            "AI Director hatası";
+    }
+}
 
 // ============================================================
 // CLEAR DIRECTOR PROGRAM
@@ -3103,9 +3472,7 @@ async function runDirectorProgram() {
     // PREPARE
     // ========================================================
 
-    stopHoldJog();
-
-    stopHoldJog();
+stopHoldJog();
 
 
 // Program başlamadan önce robotun
@@ -3113,6 +3480,9 @@ async function runDirectorProgram() {
 directorStartValues = {
     ...currentRobotValues
 };
+
+
+clearDirectorTrajectory();
 
 
 clearDirectorTrajectory();
@@ -6463,19 +6833,91 @@ directorStopButton.addEventListener(
     }
 );
 
+
+// ============================================================
+// AI DIRECTOR EVENT BINDINGS
+// ============================================================
+
+// Generate Program
+if (aiGenerateButton) {
+
+    aiGenerateButton.addEventListener(
+        "click",
+        () => {
+
+            console.log(
+                "AI Generate clicked"
+            );
+
+            interpretAICommand();
+
+        }
+    );
+
+}
+
+
+// Generate & Run
+if (aiRunButton) {
+
+    aiRunButton.addEventListener(
+        "click",
+        () => {
+
+            console.log(
+                "AI Generate & Run clicked"
+            );
+
+            runAITask();
+
+        }
+    );
+
+}
+
+
+// CTRL + ENTER = Generate & Run
+if (aiDirectorInput) {
+
+    aiDirectorInput.addEventListener(
+        "keydown",
+        event => {
+
+            if (
+                event.ctrlKey
+                &&
+                event.key === "Enter"
+            ) {
+
+                event.preventDefault();
+
+                console.log(
+                    "AI Ctrl+Enter"
+                );
+
+                runAITask();
+
+            }
+
+        }
+    );
+
+}
+
+
 // ============================================================
 // RESET
 // ============================================================
 
-directorResetButton.addEventListener(
-    "click",
-    resetDirectorToHome
-);
+if (directorResetButton) {
 
-directorResetButton.addEventListener(
-    "click",
-    resetDirectorProgram
-);
+    directorResetButton.addEventListener(
+        "click",
+        resetDirectorToHome
+    );
+
+}
+
 
 // ============================================================
 // SPEED
@@ -6491,6 +6933,7 @@ directorSpeedInput.addEventListener(
 
     }
 );
+
 
 // ============================================================
 // START APPLICATION

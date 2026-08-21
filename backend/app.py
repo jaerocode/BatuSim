@@ -29,7 +29,26 @@ from backend.robot_model import (
     symbolic_forward_kinematics
 )
 
+from backend.director import (
+    plan_director_program
+)
 
+# ============================================================
+# HIGH LEVEL TASK SYSTEM
+# ============================================================
+
+from backend.path_generator import (
+    generate_path_program,
+    PathGeneratorError
+)
+
+# ============================================================
+# BATUSIM AI
+# ============================================================
+
+from backend.ai.inference import (
+    interpret_text
+)
 # ============================================================
 # KINEMATICS
 # ============================================================
@@ -150,11 +169,22 @@ class DirectorCommand(BaseModel):
 
     type: str
 
+    # MOVE_LINEAR / ROTATE_TCP
     axis: str | None = None
 
+    # MOVE_JOINT
     joint: str | None = None
 
-    value: float
+    # MOVE_LINEAR / ROTATE_TCP / MOVE_JOINT
+    value: float | None = None
+
+    # MOVE_CARTESIAN
+    delta: list[float] | None = None
+
+    # UI / semantic information
+    label: str | None = None
+
+    orientation_mode: str | None = None
 
 
 class DirectorRequest(BaseModel):
@@ -164,6 +194,35 @@ class DirectorRequest(BaseModel):
     values: dict[str, float | None]
 
     commands: list[DirectorCommand]
+
+    linear_step_mm: float = 5.0
+
+    rotation_step_deg: float = 2.0
+
+    revolute_step_deg: float = 2.0
+
+    prismatic_step_mm: float = 5.0
+
+# ============================================================
+# NATURAL LANGUAGE TASK REQUEST
+# ============================================================
+
+class TaskInterpretRequest(BaseModel):
+
+    text: str
+
+
+# ============================================================
+# HIGH LEVEL TASK PLAN REQUEST
+# ============================================================
+
+class TaskPlanRequest(BaseModel):
+
+    dh_table: list[DHRow]
+
+    values: dict[str, float | None]
+
+    text: str
 
     linear_step_mm: float = 5.0
 
@@ -1065,6 +1124,493 @@ def api_director_plan(
         raise HTTPException(
             status_code=400,
             detail=str(error)
+        )
+
+# ============================================================
+# TASK INTERPRETER
+#
+# Natural language
+#       ↓
+# Task IR
+# ============================================================
+
+# ============================================================
+# BATUSIM AI INTERPRETER
+#
+# Natural language
+#       ↓
+# BatuSim Transformer
+#       ↓
+# Numeric Repair
+#       ↓
+# Task IR
+# ============================================================
+
+@app.post("/api/tasks/interpret")
+def api_interpret_task(
+    request: TaskInterpretRequest
+):
+
+    try:
+
+        text = request.text.strip()
+
+
+        if not text:
+
+            raise ValueError(
+                "Komut boş olamaz."
+            )
+
+
+        # ====================================================
+        # BATUSIM AI
+        # ====================================================
+
+        result = interpret_text(
+            text
+        )
+
+
+        return {
+
+            "success":
+                True,
+
+            "input_text":
+                text,
+
+            # Modelin doğrudan ürettiği command.
+            # Debug için özellikle tutuyoruz.
+            "raw_model_command":
+                result[
+                    "raw_model_command"
+                ],
+
+            # Numeric repair sonrası güvenilir command.
+            "command":
+                result[
+                    "command"
+                ],
+
+            # Path generator'ın kullanacağı ana çıktı.
+            "task_ir":
+                result[
+                    "task_ir"
+                ],
+
+            "finished":
+                result.get(
+                    "finished",
+                    True
+                ),
+
+            "checkpoint_epoch":
+                result.get(
+                    "checkpoint_epoch"
+                ),
+
+            "validation_exact_accuracy":
+                result.get(
+                    "validation_exact_accuracy"
+                )
+
+        }
+
+
+    except ValueError as error:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(error)
+        )
+
+
+    except Exception as error:
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "BatuSim AI inference hatası: "
+                f"{error}"
+            )
+        )
+
+# ============================================================
+# NATURAL LANGUAGE TASK → FULL ROBOT PLAN
+#
+# Natural language
+#       ↓
+# Task IR
+#       ↓
+# Path Generator
+#       ↓
+# Director Commands
+#       ↓
+# IK + Validation
+#       ↓
+# Trajectory
+# ============================================================
+
+# ============================================================
+# BATUSIM AI → FULL ROBOT PLAN
+#
+# User Natural Language
+#       ↓
+# BatuSim Transformer
+#       ↓
+# Numeric Repair
+#       ↓
+# Task IR
+#       ↓
+# Path Generator
+#       ↓
+# Director Commands
+#       ↓
+# IK / Robot Planner
+#       ↓
+# Joint Trajectory
+#       ↓
+# Frontend Animation
+# ============================================================
+
+@app.post("/api/tasks/plan")
+def api_plan_task(
+    request: TaskPlanRequest
+):
+
+    try:
+
+        # ====================================================
+        # 0) INPUT
+        # ====================================================
+
+        text = request.text.strip()
+
+
+        if not text:
+
+            raise ValueError(
+                "AI Director komutu boş olamaz."
+            )
+
+
+        # ====================================================
+        # 1) NATURAL LANGUAGE → BATUSIM AI
+        # ====================================================
+
+        ai_result = interpret_text(
+            text
+        )
+
+
+        # ====================================================
+        # 2) TASK IR
+        # ====================================================
+
+        task_ir = ai_result[
+            "task_ir"
+        ]
+
+
+        # ====================================================
+        # 3) TASK IR → DIRECTOR COMMANDS
+        # ====================================================
+
+        generated = generate_path_program(
+            task_ir
+        )
+
+
+        commands = generated[
+            "commands"
+        ]
+
+
+        if not commands:
+
+            raise ValueError(
+                "AI komut üretti fakat "
+                "path generator hareket oluşturamadı."
+            )
+
+
+        # ====================================================
+        # 4) ROBOT DH MODEL
+        # ====================================================
+
+        dh_table = [
+
+            row.model_dump()
+
+            for row
+            in request.dh_table
+
+        ]
+
+
+        # ====================================================
+        # 5) CURRENT ROBOT VALUES
+        # ====================================================
+
+        values = clean_values(
+            request.values
+        )
+
+
+        # ====================================================
+        # 6) JOINT MODEL
+        # ====================================================
+
+        joints = create_joints(
+            dh_table,
+            values
+        )
+
+
+        if not joints:
+
+            raise ValueError(
+                "Robot hareketli joint içermiyor."
+            )
+
+
+        # ====================================================
+        # 7) FIXED ROBOT PARAMETERS
+        # ====================================================
+
+        parameters = get_parameters(
+            values
+        )
+
+
+        # ====================================================
+        # 8) PREPARE / GET CACHED FK
+        # ====================================================
+
+        FK = get_cached_fk(
+            dh_table,
+            joints,
+            parameters
+        )
+
+
+        # ====================================================
+        # 9) DIRECTOR PLANNER
+        # ====================================================
+
+        result = plan_director_program(
+
+            commands=
+                commands,
+
+            values=
+                values,
+
+            joints=
+                joints,
+
+            fk_function=
+                FK,
+
+            linear_step_mm=
+                request.linear_step_mm,
+
+            rotation_step_deg=
+                request.rotation_step_deg,
+
+            revolute_step_deg=
+                request.revolute_step_deg,
+
+            prismatic_step_mm=
+                request.prismatic_step_mm
+
+        )
+
+
+        # ====================================================
+        # 10) ADD FK FRAMES TO TRAJECTORY
+        #
+        # Frontend robotu yalnızca TCP noktasıyla değil,
+        # bütün link frame'leriyle animasyon yapıyor.
+        # ====================================================
+
+        trajectory = result.get(
+            "trajectory"
+        )
+
+
+        if trajectory:
+
+            for point in trajectory:
+
+                q_vector = np.array(
+
+                    point[
+                        "q_vector"
+                    ],
+
+                    dtype=float
+
+                )
+
+
+                frames, T_tool = (
+                    forward_kinematics(
+                        q_vector,
+                        FK
+                    )
+                )
+
+
+                point[
+                    "frames"
+                ] = frames_to_json(
+                    frames
+                )
+
+
+                # Güvenlik açısından TCP'yi de gerçek FK'dan
+                # yeniden yazıyoruz.
+
+                point[
+                    "tcp"
+                ] = (
+                    T_tool[
+                        :3,
+                        3
+                    ]
+                    .tolist()
+                )
+
+
+        # ====================================================
+        # 11) AI DEBUG INFORMATION
+        # ====================================================
+
+        result[
+            "input_text"
+        ] = text
+
+
+        # Transformer'ın ham çıktısı.
+        #
+        # Örn:
+        #
+        # SHAPE|CIRCLE|XY|40|MOD_LINEAR|Z|17
+
+        result[
+            "raw_model_command"
+        ] = ai_result[
+            "raw_model_command"
+        ]
+
+
+        # Numeric repair sonrası.
+        #
+        # Örn:
+        #
+        # SHAPE|CIRCLE|XY|40|MOD_LINEAR|Z|137
+
+        result[
+            "ai_command"
+        ] = ai_result[
+            "command"
+        ]
+
+
+        # Semantic intermediate representation.
+
+        result[
+            "task_ir"
+        ] = task_ir
+
+
+        # Path generator çıktısı.
+
+        result[
+            "generated_program"
+        ] = generated
+
+
+        # ====================================================
+        # MODEL INFO
+        # ====================================================
+
+        result[
+            "ai_model"
+        ] = {
+
+            "name":
+                "BatuSim Transformer",
+
+            "checkpoint_epoch":
+                ai_result.get(
+                    "checkpoint_epoch"
+                ),
+
+            "validation_exact_accuracy":
+                ai_result.get(
+                    "validation_exact_accuracy"
+                ),
+
+            "autoregressive_finished":
+                ai_result.get(
+                    "finished",
+                    True
+                )
+
+        }
+
+
+        return result
+
+
+    # ========================================================
+    # PATH GENERATOR ERRORS
+    # ========================================================
+
+    except PathGeneratorError as error:
+
+        raise HTTPException(
+
+            status_code=400,
+
+            detail=(
+                "Path Generator: "
+                f"{error}"
+            )
+
+        )
+
+
+    # ========================================================
+    # USER / ROBOT / AI COMMAND ERRORS
+    # ========================================================
+
+    except ValueError as error:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(error)
+        )
+
+
+    # ========================================================
+    # INTERNAL ERROR
+    # ========================================================
+
+    except Exception as error:
+
+        raise HTTPException(
+
+            status_code=500,
+
+            detail=(
+                "BatuSim AI planning hatası: "
+                f"{error}"
+            )
+
         )
 
 # ============================================================

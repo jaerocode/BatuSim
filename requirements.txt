@@ -4,3 +4,4 @@ numpy
 sympy
 scipy
 pydantic
+openai

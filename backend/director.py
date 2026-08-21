@@ -19,11 +19,13 @@ DEFAULT_PRISMATIC_STEP_MM = 5.0
 
 POSITION_TOLERANCE_MM = 1.0
 
-# rotation_error() çıktısı doğrudan derece değildir.
-# ~0.01 yaklaşık küçük açılarda oldukça sıkı toleranstır.
 ORIENTATION_TOLERANCE = 0.02
 
-# Numerical Jacobian singularity kontrolü
+
+# ============================================================
+# SINGULARITY SETTINGS
+# ============================================================
+
 SINGULARITY_CONDITION_WARNING = 300.0
 SINGULARITY_CONDITION_ERROR = 1000.0
 
@@ -35,25 +37,12 @@ JACOBIAN_EPS_PRISMATIC = 0.1
 # SMALL HELPERS
 # ============================================================
 
-def clamp(
-    value,
-    low,
-    high
-):
-    return max(
-        low,
-        min(
-            high,
-            value
-        )
-    )
-
-
 def lerp(
     start,
     end,
     t
 ):
+
     return (
         start
         +
@@ -62,16 +51,19 @@ def lerp(
             -
             start
         )
-        * t
+        *
+        t
     )
 
 
 def normalize_axis(
     axis
 ):
+
     axis = str(
         axis
     ).upper()
+
 
     if axis not in (
         "X",
@@ -83,17 +75,12 @@ def normalize_axis(
             "Axis X, Y veya Z olmalı."
         )
 
+
     return axis
 
 
 # ============================================================
 # ROTATION MATRICES
-#
-# Director V1:
-# Rotate X/Y/Z = WORLD eksenlerinde rotation.
-#
-# Linear Jog da world X/Y/Z kullandığı için
-# ilk sürümde bu davranış daha tutarlı.
 # ============================================================
 
 def rotation_matrix_x(
@@ -104,13 +91,16 @@ def rotation_matrix_x(
         angle_deg
     )
 
+
     c = np.cos(
         angle
     )
 
+
     s = np.sin(
         angle
     )
+
 
     return np.array([
 
@@ -131,13 +121,16 @@ def rotation_matrix_y(
         angle_deg
     )
 
+
     c = np.cos(
         angle
     )
 
+
     s = np.sin(
         angle
     )
+
 
     return np.array([
 
@@ -158,13 +151,16 @@ def rotation_matrix_z(
         angle_deg
     )
 
+
     c = np.cos(
         angle
     )
 
+
     s = np.sin(
         angle
     )
+
 
     return np.array([
 
@@ -186,11 +182,13 @@ def axis_rotation_matrix(
         axis
     )
 
+
     if axis == "X":
 
         return rotation_matrix_x(
             angle_deg
         )
+
 
     if axis == "Y":
 
@@ -198,27 +196,100 @@ def axis_rotation_matrix(
             angle_deg
         )
 
+
     return rotation_matrix_z(
         angle_deg
     )
 
+# ============================================================
+# WORLD XYZ ORIENTATION DELTA
+#
+# orientation_delta:
+#
+# [rx, ry, rz]
+#
+# degree cinsinden.
+#
+# WORLD eksenlerinde uygulanır.
+#
+# R_target =
+#
+#     Rz @ Ry @ Rx @ R_start
+#
+# ============================================================
+
+def apply_world_orientation_delta(
+    R_start,
+    orientation_delta
+):
+
+    orientation_delta = np.asarray(
+        orientation_delta,
+        dtype=float
+    )
+
+
+    if (
+        orientation_delta.shape
+        !=
+        (3,)
+    ):
+
+        raise ValueError(
+
+            (
+                "orientation_delta "
+                "[rx, ry, rz] biçiminde olmalı."
+            )
+
+        )
+
+
+    rx = float(
+        orientation_delta[0]
+    )
+
+
+    ry = float(
+        orientation_delta[1]
+    )
+
+
+    rz = float(
+        orientation_delta[2]
+    )
+
+
+    Rx = rotation_matrix_x(
+        rx
+    )
+
+
+    Ry = rotation_matrix_y(
+        ry
+    )
+
+
+    Rz = rotation_matrix_z(
+        rz
+    )
+
+
+    return (
+
+        Rz
+        @
+        Ry
+        @
+        Rx
+        @
+        R_start
+
+    )
 
 # ============================================================
 # JOINT UTILITIES
 # ============================================================
-
-def joint_names(
-    joints
-):
-
-    return [
-
-        joint["name"]
-
-        for joint in joints
-
-    ]
-
 
 def joint_vector_from_values(
     joints,
@@ -237,7 +308,8 @@ def joint_vector_from_values(
             )
         )
 
-        for joint in joints
+        for joint
+        in joints
 
     ], dtype=float)
 
@@ -279,6 +351,7 @@ def find_joint_index(
 
             return index
 
+
     raise ValueError(
         f"Joint bulunamadı: {joint_name}"
     )
@@ -305,9 +378,11 @@ def check_joint_limits(
             q_vector[index]
         )
 
+
         lower = float(
             joint["min"]
         )
+
 
         upper = float(
             joint["max"]
@@ -365,20 +440,6 @@ def check_joint_limits(
 
 # ============================================================
 # NUMERICAL POSITION JACOBIAN
-#
-# İlk Director sürümünde singularity analizi için
-# TCP position Jacobian kullanıyoruz.
-#
-# Böylece:
-#
-# 3 DOF Cartesian
-# RRR
-# V-Robot
-# 6 DOF
-#
-# gibi farklı DOF'lardaki robotlarda full 6xN Jacobian'ın
-# düşük DOF robotları yanlışlıkla sürekli singular
-# göstermesini engelliyoruz.
 # ============================================================
 
 def numerical_position_jacobian(
@@ -452,7 +513,6 @@ def numerical_position_jacobian(
         )
 
 
-        # Limit dışına taşarsak ters yönde perturb et
         if (
             q_test[index]
             >
@@ -465,13 +525,12 @@ def numerical_position_jacobian(
                 epsilon
             )
 
+
             epsilon = (
                 -epsilon
             )
 
 
-        # Diğer tarafta da hareket edemiyorsak
-        # bu sütunu sıfır bırak.
         if (
             q_test[index]
             <
@@ -574,6 +633,7 @@ def singularity_metric(
             "inf"
         )
 
+
         min_sv = 0.0
 
     else:
@@ -583,6 +643,7 @@ def singularity_metric(
                 singular_values
             )
         )
+
 
         min_sv = float(
             np.min(
@@ -760,20 +821,97 @@ def director_error(
 
 
 # ============================================================
-# LINEAR COMMAND
-#
-# MOVE_LINEAR
-#
-# {
-#     "type": "MOVE_LINEAR",
-#     "axis": "X",
-#     "value": 100
-# }
-#
-# value relative movement'tır.
+# VALIDATE SOLUTION
 # ============================================================
 
-def plan_linear_command(
+def validate_solution(
+    q_solution,
+    joints,
+    fk_function,
+    command_index
+):
+
+    violations = (
+        check_joint_limits(
+            q_solution,
+            joints
+        )
+    )
+
+
+    if violations:
+
+        return director_error(
+
+            "JOINT_LIMIT_ERROR",
+
+            command_index,
+
+            (
+                f"Command {command_index + 1}: "
+                f"joint limiti aşıldı."
+            ),
+
+            violations=
+                violations
+
+        )
+
+
+    singularity = (
+        singularity_metric(
+            q_solution,
+            joints,
+            fk_function
+        )
+    )
+
+
+    if singularity[
+        "error"
+    ]:
+
+        return director_error(
+
+            "SINGULARITY_ERROR",
+
+            command_index,
+
+            (
+                f"Command {command_index + 1}: "
+                f"singular konfigürasyon."
+            ),
+
+            singularity=
+                singularity
+
+        )
+
+
+    return None
+
+
+# ============================================================
+# GENERIC CARTESIAN VECTOR MOVE
+#
+# YENİ
+#
+# {
+#     "type": "MOVE_CARTESIAN",
+#     "delta": [dx, dy, dz]
+# }
+#
+# Bu artık:
+#
+# - diagonal line
+# - triangle
+# - circle chord
+# - arbitrary 3D line
+#
+# gibi hareketleri destekler.
+# ============================================================
+
+def plan_cartesian_command(
     q_start,
     command,
     joints,
@@ -782,19 +920,74 @@ def plan_linear_command(
     linear_step_mm
 ):
 
-    axis = normalize_axis(
-        command.get(
-            "axis"
-        )
+    delta = command.get(
+        "delta"
     )
 
 
-    value = float(
-        command.get(
-            "value",
-            0.0
+    if (
+        not isinstance(
+            delta,
+            (
+                list,
+                tuple
+            )
         )
+        or
+        len(
+            delta
+        )
+        !=
+        3
+    ):
+
+        return (
+
+            None,
+
+            director_error(
+
+                "INVALID_COMMAND",
+
+                command_index,
+
+                (
+                    "MOVE_CARTESIAN delta "
+                    "[dx, dy, dz] biçiminde olmalı."
+                )
+
+            )
+
+        )
+
+
+    delta = np.asarray(
+        delta,
+        dtype=float
     )
+
+
+    if not np.all(
+        np.isfinite(
+            delta
+        )
+    ):
+
+        return (
+
+            None,
+
+            director_error(
+
+                "INVALID_COMMAND",
+
+                command_index,
+
+                "MOVE_CARTESIAN delta geçersiz."
+
+            )
+
+        )
 
 
     _, T_start = (
@@ -813,28 +1006,20 @@ def plan_linear_command(
     )
 
 
-    axis_index = {
-
-        "X": 0,
-
-        "Y": 1,
-
-        "Z": 2
-
-    }[
-        axis
-    ]
-
-
     target_position = (
-        start_position.copy()
+
+        start_position
+
+        +
+        delta
+
     )
 
 
-    target_position[
-        axis_index
-    ] += (
-        value
+    distance = float(
+        np.linalg.norm(
+            delta
+        )
     )
 
 
@@ -845,9 +1030,7 @@ def plan_linear_command(
         int(
             np.ceil(
 
-                abs(
-                    value
-                )
+                distance
 
                 /
                 max(
@@ -885,22 +1068,12 @@ def plan_linear_command(
 
 
         intermediate_target = (
-            start_position.copy()
-        )
 
+            start_position
 
-        intermediate_target[
-            axis_index
-        ] = lerp(
-
-            start_position[
-                axis_index
-            ],
-
-            target_position[
-                axis_index
-            ],
-
+            +
+            delta
+            *
             t
 
         )
@@ -927,10 +1100,6 @@ def plan_linear_command(
         )
 
 
-        # ----------------------------------------------------
-        # REACH ERROR
-        # ----------------------------------------------------
-
         if (
             not ik_result["success"]
             or
@@ -953,14 +1122,15 @@ def plan_linear_command(
 
                     (
                         f"Command {command_index + 1}: "
-                        f"{axis} yönündeki hedefe ulaşılamadı."
+                        f"Cartesian hedefe ulaşılamadı."
                     ),
 
-                    position_error=float(
-                        ik_result[
-                            "position_error"
-                        ]
-                    ),
+                    position_error=
+                        float(
+                            ik_result[
+                                "position_error"
+                            ]
+                        ),
 
                     target=[
                         float(value)
@@ -973,81 +1143,29 @@ def plan_linear_command(
             )
 
 
-        # ----------------------------------------------------
-        # JOINT LIMIT
-        #
-        # Solver bounds kullandığı için normalde taşmaz.
-        # Yine de doğruluyoruz.
-        # ----------------------------------------------------
+        validation_error = (
+            validate_solution(
 
-        violations = (
-            check_joint_limits(
                 q_solution,
-                joints
-            )
-        )
 
-
-        if violations:
-
-            return (
-
-                None,
-
-                director_error(
-
-                    "JOINT_LIMIT_ERROR",
-
-                    command_index,
-
-                    (
-                        f"Command {command_index + 1}: "
-                        f"joint limiti aşıldı."
-                    ),
-
-                    violations=
-                        violations
-
-                )
-
-            )
-
-
-        singularity = (
-            singularity_metric(
-                q_solution,
                 joints,
-                fk_function
+
+                fk_function,
+
+                command_index
+
             )
         )
 
 
         if (
-            singularity[
-                "error"
-            ]
+            validation_error
+            is not None
         ):
 
             return (
-
                 None,
-
-                director_error(
-
-                    "SINGULARITY_ERROR",
-
-                    command_index,
-
-                    (
-                        f"Command {command_index + 1}: "
-                        f"singular konfigürasyona girildi."
-                    ),
-
-                    singularity=
-                        singularity
-
-                )
-
+                validation_error
             )
 
 
@@ -1068,7 +1186,7 @@ def plan_linear_command(
 
                 command_index,
 
-                "MOVE_LINEAR"
+                "MOVE_CARTESIAN"
 
             )
 
@@ -1076,27 +1194,1025 @@ def plan_linear_command(
 
 
     return (
+
         {
+
             "q_end":
                 q_current,
 
             "points":
                 points
+
         },
+
         None
+
+    )
+
+# ============================================================
+# FOLLOW PATH
+#
+# YENİ - WAYPOINT BASED CARTESIAN PATH
+#
+# Command:
+#
+# {
+#     "type": "FOLLOW_PATH",
+#
+#     "reference": "CURRENT_TCP",
+#
+#     "waypoints": [
+#
+#         {
+#             "position": [0, 0, 0],
+#             "progress": 0.0,
+#             "orientation_delta": [0, 0, 0]
+#         },
+#
+#         ...
+#
+#     ]
+# }
+#
+#
+# position:
+#
+# command başladığı andaki TCP'ye göre RELATIVE.
+#
+#
+# orientation_delta:
+#
+# command başladığı andaki TCP orientation'a göre
+# WORLD X/Y/Z rotation.
+#
+#
+# Eğer path boyunca orientation değişimi yoksa:
+#
+#     inverse_kinematics_position()
+#
+# kullanılır.
+#
+# Böylece 3-DOF / 4-DOF robotlar gereksiz yere
+# full-pose IK zorlamasına maruz kalmaz.
+#
+#
+# Eğer orientation modifier varsa:
+#
+#     inverse_kinematics()
+#
+# kullanılır.
+# ============================================================
+
+def plan_follow_path_command(
+    q_start,
+    command,
+    joints,
+    fk_function,
+    command_index
+):
+
+    # ========================================================
+    # WAYPOINTS
+    # ========================================================
+
+    waypoints = command.get(
+        "waypoints"
+    )
+
+
+    if (
+        not isinstance(
+            waypoints,
+            list
+        )
+        or
+        len(
+            waypoints
+        )
+        <
+        2
+    ):
+
+        return (
+
+            None,
+
+            director_error(
+
+                "INVALID_COMMAND",
+
+                command_index,
+
+                (
+                    "FOLLOW_PATH en az "
+                    "iki waypoint içermeli."
+                )
+
+            )
+
+        )
+
+
+    # ========================================================
+    # REFERENCE
+    # ========================================================
+
+    reference = str(
+
+        command.get(
+            "reference",
+            "CURRENT_TCP"
+        )
+
+    ).upper()
+
+
+    if (
+        reference
+        !=
+        "CURRENT_TCP"
+    ):
+
+        return (
+
+            None,
+
+            director_error(
+
+                "INVALID_COMMAND",
+
+                command_index,
+
+                (
+                    "FOLLOW_PATH şu an yalnızca "
+                    "CURRENT_TCP reference destekliyor."
+                )
+
+            )
+
+        )
+
+
+    # ========================================================
+    # COMMAND START POSE
+    #
+    # Tüm waypoint'ler buna göre relative.
+    # ========================================================
+
+    _, T_command_start = (
+        forward_kinematics(
+
+            q_start,
+
+            fk_function
+
+        )
+    )
+
+
+    T_command_start = np.asarray(
+        T_command_start,
+        dtype=float
+    )
+
+
+    start_position = (
+        T_command_start[
+            :3,
+            3
+        ].copy()
+    )
+
+
+    start_rotation = (
+        T_command_start[
+            :3,
+            :3
+        ].copy()
+    )
+
+
+    # ========================================================
+    # DETECT ORIENTATION PATH
+    #
+    # Waypoint'lerin herhangi birinde orientation delta varsa
+    # bütün path boyunca full-pose IK kullanacağız.
+    #
+    # Böylece:
+    #
+    # "circle çizerken yaw 90 dön"
+    #
+    # gibi işler orientation=0 başlangıç waypoint'inde bile
+    # başlangıç orientation'ını korur.
+    # ========================================================
+
+    orientation_requested = False
+
+
+    for waypoint in waypoints:
+
+        orientation_delta = (
+            waypoint.get(
+                "orientation_delta",
+                [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            )
+        )
+
+
+        try:
+
+            orientation_vector = np.asarray(
+
+                orientation_delta,
+
+                dtype=float
+
+            )
+
+
+        except Exception:
+
+            return (
+
+                None,
+
+                director_error(
+
+                    "INVALID_COMMAND",
+
+                    command_index,
+
+                    (
+                        "Waypoint orientation_delta "
+                        "geçersiz."
+                    )
+
+                )
+
+            )
+
+
+        if (
+            orientation_vector.shape
+            !=
+            (3,)
+        ):
+
+            return (
+
+                None,
+
+                director_error(
+
+                    "INVALID_COMMAND",
+
+                    command_index,
+
+                    (
+                        "orientation_delta "
+                        "[rx, ry, rz] olmalı."
+                    )
+
+                )
+
+            )
+
+
+        if (
+            np.linalg.norm(
+                orientation_vector
+            )
+            >
+            1e-9
+        ):
+
+            orientation_requested = True
+
+            break
+
+
+    # ========================================================
+    # START SOLUTION
+    # ========================================================
+
+    q_current = np.asarray(
+
+        q_start,
+
+        dtype=float
+
+    ).copy()
+
+
+    points = []
+
+
+    # ========================================================
+    # WAYPOINT LOOP
+    # ========================================================
+
+    for waypoint_index, waypoint in enumerate(
+        waypoints
+    ):
+
+        # ====================================================
+        # POSITION
+        # ====================================================
+
+        relative_position = (
+            waypoint.get(
+                "position"
+            )
+        )
+
+
+        if (
+            not isinstance(
+                relative_position,
+                (
+                    list,
+                    tuple
+                )
+            )
+            or
+            len(
+                relative_position
+            )
+            !=
+            3
+        ):
+
+            return (
+
+                None,
+
+                director_error(
+
+                    "INVALID_COMMAND",
+
+                    command_index,
+
+                    (
+                        f"Waypoint {waypoint_index}: "
+                        "position [x,y,z] olmalı."
+                    ),
+
+                    waypoint_index=
+                        int(
+                            waypoint_index
+                        )
+
+                )
+
+            )
+
+
+        try:
+
+            relative_position = np.asarray(
+
+                relative_position,
+
+                dtype=float
+
+            )
+
+
+        except Exception:
+
+            return (
+
+                None,
+
+                director_error(
+
+                    "INVALID_COMMAND",
+
+                    command_index,
+
+                    (
+                        f"Waypoint {waypoint_index}: "
+                        "position sayısal değil."
+                    ),
+
+                    waypoint_index=
+                        int(
+                            waypoint_index
+                        )
+
+                )
+
+            )
+
+
+        if not np.all(
+            np.isfinite(
+                relative_position
+            )
+        ):
+
+            return (
+
+                None,
+
+                director_error(
+
+                    "INVALID_COMMAND",
+
+                    command_index,
+
+                    (
+                        f"Waypoint {waypoint_index}: "
+                        "position geçersiz."
+                    ),
+
+                    waypoint_index=
+                        int(
+                            waypoint_index
+                        )
+
+                )
+
+            )
+
+
+        target_position = (
+
+            start_position
+
+            +
+            relative_position
+
+        )
+
+
+        # ====================================================
+        # ORIENTATION DELTA
+        # ====================================================
+
+        orientation_delta = np.asarray(
+
+            waypoint.get(
+
+                "orientation_delta",
+
+                [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+
+            ),
+
+            dtype=float
+
+        )
+
+
+        # ====================================================
+        # FULL POSE IK
+        #
+        # orientation modifier varsa.
+        # ====================================================
+
+        if orientation_requested:
+
+            try:
+
+                target_rotation = (
+                    apply_world_orientation_delta(
+
+                        start_rotation,
+
+                        orientation_delta
+
+                    )
+                )
+
+
+            except Exception as error:
+
+                return (
+
+                    None,
+
+                    director_error(
+
+                        "INVALID_COMMAND",
+
+                        command_index,
+
+                        (
+                            f"Waypoint {waypoint_index}: "
+                            f"{str(error)}"
+                        ),
+
+                        waypoint_index=
+                            int(
+                                waypoint_index
+                            )
+
+                    )
+
+                )
+
+
+            T_target = np.eye(
+                4,
+                dtype=float
+            )
+
+
+            T_target[
+                :3,
+                :3
+            ] = (
+                target_rotation
+            )
+
+
+            T_target[
+                :3,
+                3
+            ] = (
+                target_position
+            )
+
+
+            ik_result = (
+                inverse_kinematics(
+
+                    T_target,
+
+                    q_current,
+
+                    joints,
+
+                    fk_function
+
+                )
+            )
+
+
+            q_solution = np.asarray(
+
+                ik_result[
+                    "q"
+                ],
+
+                dtype=float
+
+            )
+
+
+            # =================================================
+            # POSE VALIDATION
+            # =================================================
+
+            if (
+                not ik_result[
+                    "success"
+                ]
+                or
+                ik_result[
+                    "position_error"
+                ]
+                >
+                POSITION_TOLERANCE_MM
+                or
+                ik_result[
+                    "orientation_error"
+                ]
+                >
+                ORIENTATION_TOLERANCE
+            ):
+
+                return (
+
+                    None,
+
+                    director_error(
+
+                        "REACH_ERROR",
+
+                        command_index,
+
+                        (
+                            f"Command {command_index + 1}: "
+                            f"Waypoint {waypoint_index + 1} "
+                            "pose gerçekleştirilemedi."
+                        ),
+
+                        waypoint_index=
+                            int(
+                                waypoint_index
+                            ),
+
+                        position_error=
+                            float(
+                                ik_result[
+                                    "position_error"
+                                ]
+                            ),
+
+                        orientation_error=
+                            float(
+                                ik_result[
+                                    "orientation_error"
+                                ]
+                            ),
+
+                        target_position=
+                            [
+                                float(value)
+                                for value
+                                in target_position
+                            ],
+
+                        orientation_delta=
+                            [
+                                float(value)
+                                for value
+                                in orientation_delta
+                            ]
+
+                    )
+
+                )
+
+
+        # ====================================================
+        # POSITION-ONLY IK
+        #
+        # Circle / square / helix gibi path'te TCP
+        # orientation değişmiyorsa.
+        # ====================================================
+
+        else:
+
+            ik_result = (
+                inverse_kinematics_position(
+
+                    target_position,
+
+                    q_current,
+
+                    joints,
+
+                    fk_function
+
+                )
+            )
+
+
+            q_solution = np.asarray(
+
+                ik_result[
+                    "q"
+                ],
+
+                dtype=float
+
+            )
+
+
+            if (
+                not ik_result[
+                    "success"
+                ]
+                or
+                ik_result[
+                    "position_error"
+                ]
+                >
+                POSITION_TOLERANCE_MM
+            ):
+
+                return (
+
+                    None,
+
+                    director_error(
+
+                        "REACH_ERROR",
+
+                        command_index,
+
+                        (
+                            f"Command {command_index + 1}: "
+                            f"Waypoint {waypoint_index + 1} "
+                            "ulaşılamıyor."
+                        ),
+
+                        waypoint_index=
+                            int(
+                                waypoint_index
+                            ),
+
+                        position_error=
+                            float(
+                                ik_result[
+                                    "position_error"
+                                ]
+                            ),
+
+                        target_position=
+                            [
+                                float(value)
+                                for value
+                                in target_position
+                            ]
+
+                    )
+
+                )
+
+
+        # ====================================================
+        # JOINT LIMIT + SINGULARITY
+        # ====================================================
+
+        validation_error = (
+            validate_solution(
+
+                q_solution,
+
+                joints,
+
+                fk_function,
+
+                command_index
+
+            )
+        )
+
+
+        if (
+            validation_error
+            is not None
+        ):
+
+            validation_error[
+                "waypoint_index"
+            ] = int(
+                waypoint_index
+            )
+
+
+            validation_error[
+                "target_position"
+            ] = [
+
+                float(value)
+
+                for value
+                in target_position
+
+            ]
+
+
+            return (
+
+                None,
+
+                validation_error
+
+            )
+
+
+        # ====================================================
+        # ACCEPT SOLUTION
+        # ====================================================
+
+        q_current = (
+            q_solution
+        )
+
+
+        # ====================================================
+        # SERIALIZE TRAJECTORY POINT
+        # ====================================================
+
+        trajectory_point = (
+            create_trajectory_point(
+
+                q_current,
+
+                joints,
+
+                fk_function,
+
+                command_index,
+
+                "FOLLOW_PATH"
+
+            )
+        )
+
+
+        # ====================================================
+        # PATH METADATA
+        # ====================================================
+
+        trajectory_point[
+            "waypoint_index"
+        ] = int(
+            waypoint_index
+        )
+
+
+        trajectory_point[
+            "path_progress"
+        ] = float(
+
+            waypoint.get(
+
+                "progress",
+
+                (
+                    waypoint_index
+
+                    /
+
+                    max(
+                        len(
+                            waypoints
+                        )
+                        -
+                        1,
+
+                        1
+                    )
+                )
+
+            )
+
+        )
+
+
+        trajectory_point[
+            "path_label"
+        ] = str(
+
+            waypoint.get(
+                "label",
+                "Waypoint"
+            )
+
+        )
+
+
+        trajectory_point[
+            "target_tcp"
+        ] = [
+
+            float(value)
+
+            for value
+            in target_position
+
+        ]
+
+
+        trajectory_point[
+            "orientation_delta"
+        ] = [
+
+            float(value)
+
+            for value
+            in orientation_delta
+
+        ]
+
+
+        points.append(
+            trajectory_point
+        )
+
+
+    # ========================================================
+    # SUCCESS
+    # ========================================================
+
+    return (
+
+        {
+
+            "q_end":
+                q_current,
+
+            "points":
+                points,
+
+            "waypoint_count":
+                len(
+                    waypoints
+                ),
+
+            "orientation_controlled":
+                bool(
+                    orientation_requested
+                )
+
+        },
+
+        None
+
+    )
+
+# ============================================================
+# OLD AXIS-BASED LINEAR MOVE
+#
+# Geriye dönük uyumluluk için koruyoruz.
+# ============================================================
+
+def plan_linear_command(
+    q_start,
+    command,
+    joints,
+    fk_function,
+    command_index,
+    linear_step_mm
+):
+
+    axis = normalize_axis(
+        command.get(
+            "axis"
+        )
+    )
+
+
+    value = float(
+        command.get(
+            "value",
+            0.0
+        )
+    )
+
+
+    delta = {
+
+        "X":
+            [
+                value,
+                0.0,
+                0.0
+            ],
+
+        "Y":
+            [
+                0.0,
+                value,
+                0.0
+            ],
+
+        "Z":
+            [
+                0.0,
+                0.0,
+                value
+            ]
+
+    }[
+        axis
+    ]
+
+
+    converted_command = {
+
+        "type":
+            "MOVE_CARTESIAN",
+
+        "delta":
+            delta
+
+    }
+
+
+    return plan_cartesian_command(
+
+        q_start,
+
+        converted_command,
+
+        joints,
+
+        fk_function,
+
+        command_index,
+
+        linear_step_mm
+
     )
 
 
 # ============================================================
-# ROTATE TCP COMMAND
-#
-# {
-#     "type": "ROTATE_TCP",
-#     "axis": "Z",
-#     "value": 30
-# }
-#
-# WORLD X/Y/Z axis rotation.
+# ROTATE TCP
 # ============================================================
 
 def plan_rotation_command(
@@ -1172,10 +2288,12 @@ def plan_rotation_command(
     )
 
 
-    q_current = np.asarray(
-        q_start,
-        dtype=float
-    ).copy()
+    q_current = (
+        np.asarray(
+            q_start,
+            dtype=float
+        ).copy()
+    )
 
 
     points = []
@@ -1194,9 +2312,12 @@ def plan_rotation_command(
 
 
         angle = (
+
             value
+
             *
             t
+
         )
 
 
@@ -1208,11 +2329,14 @@ def plan_rotation_command(
         )
 
 
-        # WORLD axis rotation
         R_target = (
+
             R_delta
+
             @
+
             R_start
+
         )
 
 
@@ -1259,10 +2383,6 @@ def plan_rotation_command(
         )
 
 
-        # ----------------------------------------------------
-        # REACH / POSE ERROR
-        # ----------------------------------------------------
-
         if (
             not ik_result["success"]
             or
@@ -1291,94 +2411,52 @@ def plan_rotation_command(
 
                     (
                         f"Command {command_index + 1}: "
-                        f"istenen TCP orientation gerçekleştirilemedi."
+                        f"istenen TCP orientation "
+                        f"gerçekleştirilemedi."
                     ),
 
-                    position_error=float(
-                        ik_result[
-                            "position_error"
-                        ]
-                    ),
+                    position_error=
+                        float(
+                            ik_result[
+                                "position_error"
+                            ]
+                        ),
 
-                    orientation_error=float(
-                        ik_result[
-                            "orientation_error"
-                        ]
-                    )
+                    orientation_error=
+                        float(
+                            ik_result[
+                                "orientation_error"
+                            ]
+                        )
 
                 )
 
             )
 
 
-        violations = (
-            check_joint_limits(
+        validation_error = (
+            validate_solution(
+
                 q_solution,
-                joints
-            )
-        )
 
-
-        if violations:
-
-            return (
-
-                None,
-
-                director_error(
-
-                    "JOINT_LIMIT_ERROR",
-
-                    command_index,
-
-                    (
-                        f"Command {command_index + 1}: "
-                        f"joint limiti aşıldı."
-                    ),
-
-                    violations=
-                        violations
-
-                )
-
-            )
-
-
-        singularity = (
-            singularity_metric(
-                q_solution,
                 joints,
-                fk_function
+
+                fk_function,
+
+                command_index
+
             )
         )
 
 
         if (
-            singularity[
-                "error"
-            ]
+            validation_error
+            is not None
         ):
 
             return (
-
                 None,
-
-                director_error(
-
-                    "SINGULARITY_ERROR",
-
-                    command_index,
-
-                    (
-                        f"Command {command_index + 1}: "
-                        f"singular konfigürasyon."
-                    ),
-
-                    singularity=
-                        singularity
-
-                )
-
+                validation_error
             )
 
 
@@ -1407,32 +2485,24 @@ def plan_rotation_command(
 
 
     return (
+
         {
+
             "q_end":
                 q_current,
 
             "points":
                 points
+
         },
+
         None
+
     )
 
 
 # ============================================================
-# MOVE JOINT COMMAND
-#
-# V1:
-#
-# value = RELATIVE joint movement
-#
-# {
-#     "type": "MOVE_JOINT",
-#     "joint": "q2",
-#     "value": 30
-# }
-#
-# Revolute -> degree
-# Prismatic -> mm
+# MOVE JOINT
 # ============================================================
 
 def plan_joint_command(
@@ -1491,10 +2561,6 @@ def plan_joint_command(
 
     )
 
-
-    # --------------------------------------------------------
-    # LIMIT BEFORE PLANNING
-    # --------------------------------------------------------
 
     if (
         target_value
@@ -1624,74 +2690,29 @@ def plan_joint_command(
         )
 
 
-        violations = (
-            check_joint_limits(
+        validation_error = (
+            validate_solution(
+
                 q_current,
-                joints
-            )
-        )
 
-
-        if violations:
-
-            return (
-
-                None,
-
-                director_error(
-
-                    "JOINT_LIMIT_ERROR",
-
-                    command_index,
-
-                    (
-                        f"Command {command_index + 1}: "
-                        f"joint limiti aşıldı."
-                    ),
-
-                    violations=
-                        violations
-
-                )
-
-            )
-
-
-        singularity = (
-            singularity_metric(
-                q_current,
                 joints,
-                fk_function
+
+                fk_function,
+
+                command_index
+
             )
         )
 
 
         if (
-            singularity[
-                "error"
-            ]
+            validation_error
+            is not None
         ):
 
             return (
-
                 None,
-
-                director_error(
-
-                    "SINGULARITY_ERROR",
-
-                    command_index,
-
-                    (
-                        f"Command {command_index + 1}: "
-                        f"singular konfigürasyon."
-                    ),
-
-                    singularity=
-                        singularity
-
-                )
-
+                validation_error
             )
 
 
@@ -1715,23 +2736,297 @@ def plan_joint_command(
 
 
     return (
+
         {
+
             "q_end":
                 q_current,
 
             "points":
                 points
+
         },
+
         None
+
+    )
+
+
+# ============================================================
+# RETURN TCP TO PROGRAM START
+#
+# YENİ
+#
+# TCP position programın başladığı noktaya
+# düz bir Cartesian yol ile döner.
+#
+# Orientation zorlanmaz.
+# Bu sayede 3-DOF robotlarda da kullanılabilir.
+# ============================================================
+
+def plan_return_tcp_to_start(
+    q_current,
+    start_tcp_position,
+    joints,
+    fk_function,
+    command_index,
+    linear_step_mm
+):
+
+    _, T_current = (
+        forward_kinematics(
+            q_current,
+            fk_function
+        )
+    )
+
+
+    current_position = (
+        T_current[
+            :3,
+            3
+        ].copy()
+    )
+
+
+    start_tcp_position = np.asarray(
+
+        start_tcp_position,
+
+        dtype=float
+
+    )
+
+
+    delta = (
+
+        start_tcp_position
+
+        -
+        current_position
+
+    )
+
+
+    return plan_cartesian_command(
+
+        q_current,
+
+        {
+
+            "type":
+                "MOVE_CARTESIAN",
+
+            "delta":
+                delta.tolist()
+
+        },
+
+        joints,
+
+        fk_function,
+
+        command_index,
+
+        linear_step_mm
+
+    )
+
+
+# ============================================================
+# RETURN JOINTS TO PROGRAM START
+#
+# YENİ
+#
+# Program başladığında kaydedilen q_start'a
+# joint-space interpolation ile döner.
+# ============================================================
+
+def plan_return_joints_to_start(
+    q_current,
+    q_program_start,
+    joints,
+    fk_function,
+    command_index,
+    revolute_step_deg,
+    prismatic_step_mm
+):
+
+    q_current = np.asarray(
+        q_current,
+        dtype=float
+    )
+
+
+    q_program_start = np.asarray(
+        q_program_start,
+        dtype=float
+    )
+
+
+    delta = (
+
+        q_program_start
+
+        -
+        q_current
+
+    )
+
+
+    step_counts = []
+
+
+    for index, joint in enumerate(
+        joints
+    ):
+
+        if (
+            joint["type"]
+            ==
+            "R"
+        ):
+
+            step_size = (
+                revolute_step_deg
+            )
+
+        else:
+
+            step_size = (
+                prismatic_step_mm
+            )
+
+
+        step_counts.append(
+
+            int(
+                np.ceil(
+
+                    abs(
+                        delta[index]
+                    )
+
+                    /
+                    max(
+                        step_size,
+                        1e-6
+                    )
+
+                )
+            )
+
+        )
+
+
+    number_of_steps = max(
+
+        1,
+
+        max(
+            step_counts,
+            default=1
+        )
+
+    )
+
+
+    points = []
+
+
+    q_step = (
+        q_current.copy()
+    )
+
+
+    for step_index in range(
+        1,
+        number_of_steps + 1
+    ):
+
+        t = (
+            step_index
+            /
+            number_of_steps
+        )
+
+
+        q_step = (
+
+            q_current
+
+            +
+            delta
+            *
+            t
+
+        )
+
+
+        validation_error = (
+            validate_solution(
+
+                q_step,
+
+                joints,
+
+                fk_function,
+
+                command_index
+
+            )
+        )
+
+
+        if (
+            validation_error
+            is not None
+        ):
+
+            return (
+                None,
+                validation_error
+            )
+
+
+        points.append(
+
+            create_trajectory_point(
+
+                q_step,
+
+                joints,
+
+                fk_function,
+
+                command_index,
+
+                "RETURN_JOINTS_TO_START"
+
+            )
+
+        )
+
+
+    return (
+
+        {
+
+            "q_end":
+                q_program_start.copy(),
+
+            "points":
+                points
+
+        },
+
+        None
+
     )
 
 
 # ============================================================
 # DIRECTOR PROGRAM PLANNER
-#
-# Ana fonksiyon.
-#
-# app.py bunu çağıracak.
 # ============================================================
 
 def plan_director_program(
@@ -1766,11 +3061,20 @@ def plan_director_program(
         )
 
 
+    # ========================================================
+    # INITIAL JOINT CONFIGURATION
+    # ========================================================
+
     q_current = (
         joint_vector_from_values(
             joints,
             values
         )
+    )
+
+
+    q_program_start = (
+        q_current.copy()
     )
 
 
@@ -1790,12 +3094,43 @@ def plan_director_program(
 
             0,
 
-            "Başlangıç joint konfigürasyonu limit dışında.",
+            (
+                "Başlangıç joint konfigürasyonu "
+                "limit dışında."
+            ),
 
             violations=
                 initial_violations
 
         )
+
+
+    # ========================================================
+    # SAVE PROGRAM START TCP
+    # ========================================================
+
+    _, T_program_start = (
+        forward_kinematics(
+            q_program_start,
+            fk_function
+        )
+    )
+
+
+    start_tcp_position = (
+        T_program_start[
+            :3,
+            3
+        ].copy()
+    )
+
+
+    start_tcp_rotation = (
+        T_program_start[
+            :3,
+            :3
+        ].copy()
+    )
 
 
     # ========================================================
@@ -1805,7 +3140,6 @@ def plan_director_program(
     trajectory = []
 
 
-    # İlk noktayı da gönderiyoruz.
     trajectory.append(
 
         create_trajectory_point(
@@ -1829,7 +3163,7 @@ def plan_director_program(
 
 
     # ========================================================
-    # PROGRAM
+    # PROGRAM LOOP
     # ========================================================
 
     for command_index, command in enumerate(
@@ -1846,9 +3180,13 @@ def plan_director_program(
         ).upper()
 
 
-        # ----------------------------------------------------
+        result = None
+        error = None
+
+
+        # ====================================================
         # MOVE LINEAR
-        # ----------------------------------------------------
+        # ====================================================
 
         if (
             command_type
@@ -1875,9 +3213,72 @@ def plan_director_program(
             )
 
 
-        # ----------------------------------------------------
+        # ====================================================
+        # MOVE CARTESIAN
+        # ====================================================
+
+        elif (
+            command_type
+            ==
+            "MOVE_CARTESIAN"
+        ):
+
+            result, error = (
+                plan_cartesian_command(
+
+                    q_current,
+
+                    command,
+
+                    joints,
+
+                    fk_function,
+
+                    command_index,
+
+                    linear_step_mm
+
+                )
+            )
+
+                # ====================================================
+        # FOLLOW PATH
+        #
+        # Waypoint based arbitrary 3D Cartesian trajectory.
+        #
+        # Circle
+        # Helix
+        # Triangle
+        # Rising square
+        # Orientation-progress path
+        #
+        # ====================================================
+
+        elif (
+            command_type
+            ==
+            "FOLLOW_PATH"
+        ):
+
+            result, error = (
+                plan_follow_path_command(
+
+                    q_current,
+
+                    command,
+
+                    joints,
+
+                    fk_function,
+
+                    command_index
+
+                )
+            )
+
+        # ====================================================
         # ROTATE TCP
-        # ----------------------------------------------------
+        # ====================================================
 
         elif (
             command_type
@@ -1904,9 +3305,9 @@ def plan_director_program(
             )
 
 
-        # ----------------------------------------------------
+        # ====================================================
         # MOVE JOINT
-        # ----------------------------------------------------
+        # ====================================================
 
         elif (
             command_type
@@ -1935,9 +3336,69 @@ def plan_director_program(
             )
 
 
-        # ----------------------------------------------------
+        # ====================================================
+        # RETURN TCP TO START
+        # ====================================================
+
+        elif (
+            command_type
+            ==
+            "RETURN_TCP_TO_START"
+        ):
+
+            result, error = (
+                plan_return_tcp_to_start(
+
+                    q_current,
+
+                    start_tcp_position,
+
+                    joints,
+
+                    fk_function,
+
+                    command_index,
+
+                    linear_step_mm
+
+                )
+            )
+
+
+        # ====================================================
+        # RETURN JOINTS TO START
+        # ====================================================
+
+        elif (
+            command_type
+            ==
+            "RETURN_JOINTS_TO_START"
+        ):
+
+            result, error = (
+                plan_return_joints_to_start(
+
+                    q_current,
+
+                    q_program_start,
+
+                    joints,
+
+                    fk_function,
+
+                    command_index,
+
+                    revolute_step_deg,
+
+                    prismatic_step_mm
+
+                )
+            )
+
+
+        # ====================================================
         # UNKNOWN
-        # ----------------------------------------------------
+        # ====================================================
 
         else:
 
@@ -1955,9 +3416,9 @@ def plan_director_program(
             )
 
 
-        # ----------------------------------------------------
+        # ====================================================
         # COMMAND ERROR
-        # ----------------------------------------------------
+        # ====================================================
 
         if (
             error
@@ -1981,9 +3442,9 @@ def plan_director_program(
             return error
 
 
-        # ----------------------------------------------------
-        # SUCCESS
-        # ----------------------------------------------------
+        # ====================================================
+        # COMMAND SUCCESS
+        # ====================================================
 
         q_current = np.asarray(
             result[
@@ -2019,7 +3480,7 @@ def plan_director_program(
 
 
     # ========================================================
-    # COMPLETE PROGRAM STATISTICS
+    # PROGRAM STATISTICS
     # ========================================================
 
     singularity_conditions = [
@@ -2077,6 +3538,18 @@ def plan_director_program(
     )
 
 
+    q_start_dict = (
+        joint_dict_from_vector(
+            joints,
+            q_program_start
+        )
+    )
+
+
+    # ========================================================
+    # RESPONSE
+    # ========================================================
+
     return {
 
         "success":
@@ -2102,8 +3575,21 @@ def plan_director_program(
         "commands":
             command_results,
 
+        "q_start":
+            q_start_dict,
+
         "q_final":
             q_end_dict,
+
+        "start_tcp":
+            [
+                float(value)
+                for value
+                in start_tcp_position
+            ],
+
+        "start_rotation":
+            start_tcp_rotation.tolist(),
 
         "stats": {
 

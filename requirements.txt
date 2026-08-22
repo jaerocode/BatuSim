@@ -5,3 +5,4 @@ sympy
 scipy
 pydantic
 openai
+pyserial

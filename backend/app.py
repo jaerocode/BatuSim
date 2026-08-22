@@ -8,6 +8,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from backend.hardware_bridge import (
+    ArduinoRobotBridge
+)
 
 from pydantic import BaseModel, Field
 
@@ -16,6 +19,23 @@ from pydantic import BaseModel, Field
 # ============================================================
 
 FK_CACHE = {}
+
+# ============================================================
+# PHYSICAL ROBOT
+# ============================================================
+
+HARDWARE_BRIDGE = ArduinoRobotBridge(
+    port="COM4"
+)
+
+try:
+    HARDWARE_BRIDGE.connect()
+
+except Exception as error:
+    print(
+        "Hardware connection warning:",
+        error
+    )
 
 # ============================================================
 # ROBOT MODEL
@@ -741,6 +761,24 @@ def api_joint_jog(
             request.prismatic_step
         )
 
+        # ====================================================
+        # SYNC PHYSICAL ROBOT
+        # ====================================================
+
+        try:
+            HARDWARE_BRIDGE.send_q(
+                q_new
+            )
+
+        except Exception as error:
+            print(
+                "Hardware sync warning:",
+                error
+            )
+
+        # ====================================================
+        # FORWARD KINEMATICS
+        # ====================================================
 
         frames, T_tool = (
             forward_kinematics(
@@ -748,7 +786,6 @@ def api_joint_jog(
                 FK
             )
         )
-
 
         return {
             "success": True,
@@ -796,6 +833,10 @@ def api_linear_jog(
 
     try:
 
+        # ====================================================
+        # AXIS
+        # ====================================================
+
         axis = (
             request.axis
             .upper()
@@ -813,6 +854,10 @@ def api_linear_jog(
             )
 
 
+        # ====================================================
+        # DIRECTION
+        # ====================================================
+
         if request.direction not in (
             -1,
             1
@@ -823,16 +868,32 @@ def api_linear_jog(
             )
 
 
+        # ====================================================
+        # DH TABLE
+        # ====================================================
+
         dh_table = [
+
             row.model_dump()
-            for row in request.dh_table
+
+            for row
+            in request.dh_table
+
         ]
 
+
+        # ====================================================
+        # CURRENT VALUES
+        # ====================================================
 
         values = clean_values(
             request.values
         )
 
+
+        # ====================================================
+        # JOINT MODEL
+        # ====================================================
 
         joints = create_joints(
             dh_table,
@@ -847,10 +908,18 @@ def api_linear_jog(
             )
 
 
+        # ====================================================
+        # PARAMETERS
+        # ====================================================
+
         parameters = get_parameters(
             values
         )
 
+
+        # ====================================================
+        # FK
+        # ====================================================
 
         FK = get_cached_fk(
             dh_table,
@@ -859,81 +928,172 @@ def api_linear_jog(
         )
 
 
+        # ====================================================
+        # CURRENT JOINT VECTOR
+        # ====================================================
+
         q_current = create_q_vector(
             joints,
             values
         )
 
 
+        # ====================================================
+        # CARTESIAN LINEAR JOG
+        #
+        # X / Y / Z target
+        #       ↓
+        # IK
+        #       ↓
+        # q_new
+        # ====================================================
+
         result = linear_jog(
+
             q_current,
+
             axis,
+
             request.direction,
+
             request.step,
+
             joints,
+
             FK
+
         )
 
 
-        q_new = result["q"]
+        q_new = result[
+            "q"
+        ]
 
+
+        # ====================================================
+        # IK POSITION ERROR
+        # ====================================================
 
         position_error = float(
+
             result[
                 "position_error"
             ]
+
         )
 
 
-        # Hedef gerçekten erişilebilir mi?
-        if position_error > 1.0:
+        # ====================================================
+        # TARGET REACHABILITY CHECK
+        #
+        # KRİTİK:
+        #
+        # Fiziksel robota başarısız IK sonucu göndermiyoruz.
+        # ====================================================
+
+        if (
+            position_error
+            >
+            1.0
+        ):
 
             return {
-                "success": False,
+
+                "success":
+                    False,
 
                 "message":
-                    "Hedefe yeterince "
-                    "yaklaşılamadı.",
+                    (
+                        "Hedefe yeterince "
+                        "yaklaşılamadı."
+                    ),
 
                 "position_error":
                     position_error,
 
                 "q": {
+
                     joint["name"]:
-                        float(value)
+                        float(
+                            value
+                        )
 
                     for joint, value
                     in zip(
                         joints,
                         q_new
                     )
+
                 }
+
             }
 
 
+        # ====================================================
+        # SYNC PHYSICAL ROBOT
+        #
+        # Cartesian jog IK ile q1/q2/q3'e çevrildi.
+        #
+        # Aynı q:
+        #
+        # simulation
+        # +
+        # physical robot
+        #
+        # tarafından kullanılıyor.
+        # ====================================================
+
+        try:
+
+            HARDWARE_BRIDGE.send_q(
+                q_new
+            )
+
+
+        except Exception as hardware_error:
+
+            print(
+                "Hardware linear jog sync warning:",
+                hardware_error
+            )
+
+
+        # ====================================================
+        # RESPONSE
+        # ====================================================
+
         return {
+
             "success":
                 bool(
-                    result["success"]
+                    result[
+                        "success"
+                    ]
                 ),
 
             "position_error":
                 position_error,
 
             "q": {
+
                 joint["name"]:
-                    float(value)
+                    float(
+                        value
+                    )
 
                 for joint, value
                 in zip(
                     joints,
                     q_new
                 )
+
             },
 
             "frames":
                 frames_to_json(
-                    result["frames"]
+                    result[
+                        "frames"
+                    ]
                 ),
 
             "tcp":
@@ -945,20 +1105,98 @@ def api_linear_jog(
             "target":
                 result[
                     "target_position"
-                ].tolist(),
+                ]
+                .tolist(),
 
             "axis":
-                result["axis"],
+                result[
+                    "axis"
+                ],
 
             "distance":
                 float(
-                    result["distance"]
+                    result[
+                        "distance"
+                    ]
                 )
+
         }
 
 
     except Exception as error:
 
+        raise HTTPException(
+
+            status_code=400,
+
+            detail=str(
+                error
+            )
+
+        )
+
+# ============================================================
+# HARDWARE - SEND TRAJECTORY POINT
+# ============================================================
+
+class HardwareQRequest(BaseModel):
+
+    q_vector: list[float]
+
+
+@app.post("/api/hardware/q")
+def api_hardware_q(
+    request: HardwareQRequest
+):
+
+    try:
+
+        q_vector = np.array(
+            request.q_vector,
+            dtype=float
+        )
+
+
+        # ====================================================
+        # 3R PHYSICAL ROBOT CHECK
+        # ====================================================
+
+        if len(q_vector) != 3:
+
+            raise ValueError(
+                "Fiziksel 3R robot için "
+                "q_vector 3 elemanlı olmalıdır."
+            )
+
+
+        # ====================================================
+        # SEND TO PHYSICAL ROBOT
+        # ====================================================
+
+        result = HARDWARE_BRIDGE.send_q(
+            q_vector
+        )
+
+
+        return {
+
+            "success": True,
+
+            "q":
+                result["q"],
+
+            "servo_angles":
+                result["servo_angles"],
+
+            "response":
+                result["response"]
+
+        }
+
+
+    except Exception as error:
+
+        # Hardware hatası trajectory planner'ı bozmasın.
         raise HTTPException(
             status_code=400,
             detail=str(error)

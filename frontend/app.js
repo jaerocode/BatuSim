@@ -2788,6 +2788,86 @@ function setDirectorRunningState(
 }
 
 // ============================================================
+// SYNC DIRECTOR POINT TO PHYSICAL ROBOT
+// ============================================================
+
+async function sendDirectorPointToHardware(
+    point
+) {
+
+    if (
+        !point
+        ||
+        !Array.isArray(point.q_vector)
+        ||
+        point.q_vector.length !== 3
+    ) {
+
+        console.warn(
+            "Hardware için geçersiz q_vector:",
+            point
+        );
+
+        return false;
+    }
+
+
+    try {
+
+        const data =
+            await apiRequest(
+                "/api/hardware/q",
+                {
+
+                    method:
+                        "POST",
+
+                    headers: {
+
+                        "Content-Type":
+                            "application/json"
+
+                    },
+
+                    body:
+                        JSON.stringify({
+
+                            q_vector:
+                                point.q_vector
+
+                        })
+
+                },
+
+                0
+            );
+
+
+        console.log(
+            "Physical robot:",
+            data.q,
+            "servo:",
+            data.servo_angles
+        );
+
+
+        return true;
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Physical robot sync error:",
+            error
+        );
+
+
+        return false;
+    }
+}
+
+// ============================================================
 // APPLY DIRECTOR TRAJECTORY POINT
 // ============================================================
 
@@ -2923,8 +3003,14 @@ function startDirectorAnimation(
     );
 
 
-    // İlk frame direkt göster.
+    // İlk frame simülasyonda göster.
     applyDirectorTrajectoryPoint(
+        directorTrajectory[0]
+    );
+
+
+    // İlk frame fiziksel robota da gönder.
+    sendDirectorPointToHardware(
         directorTrajectory[0]
     );
 
@@ -3038,7 +3124,25 @@ function directorAnimationLoop(
             ];
 
 
+        // ========================================================
+        // DIGITAL TWIN
+        //
+        // Aynı trajectory point:
+        //
+        //      Simulation
+        //          +
+        //      Physical Robot
+        //
+        // tarafından kullanılır.
+        // ========================================================
+
         applyDirectorTrajectoryPoint(
+            point
+        );
+
+
+        // Fiziksel robota aynı q gönder.
+        sendDirectorPointToHardware(
             point
         );
 
@@ -5783,6 +5887,7 @@ async function performLinearJog(
         return false;
     }
 }
+
 
 
 // ============================================================
